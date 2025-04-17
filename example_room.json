@@ -1,0 +1,362 @@
+{
+    "_type": "ROOM_STB",
+    "_file": "00.special rooms.stb",
+    "variant": 39,
+    "name": "double t",
+    "type": 4,
+    "subtype": 1,
+    "shape": 1,
+    "width": 15,
+    "height": 9,
+    "difficulty": 1,
+    "weight": 1,
+    "doors": [
+        {
+            "x": 0,
+            "y": 4,
+            "exists": false
+        },
+        {
+            "x": 7,
+            "y": 0,
+            "exists": true
+        },
+        {
+            "x": 7,
+            "y": 8,
+            "exists": true
+        },
+        {
+            "x": 14,
+            "y": 4,
+            "exists": true
+        }
+    ],
+    "spawns": [
+        {
+            "x": 1,
+            "y": 1,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 2,
+            "y": 1,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 3,
+            "y": 1,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 5,
+            "y": 1,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 1,
+            "y": 2,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 2,
+            "y": 2,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 1,
+            "y": 3,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 2,
+            "y": 3,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 3,
+            "y": 3,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 4,
+            "y": 3,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 1,
+            "y": 4,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 2,
+            "y": 4,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 3,
+            "y": 4,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 4,
+            "y": 4,
+            "entity": [
+                {
+                    "type": 5,
+                    "variant": 100,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 5,
+            "y": 4,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 10,
+            "y": 4,
+            "entity": [
+                {
+                    "type": 5,
+                    "variant": 100,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 1,
+            "y": 5,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 3,
+            "y": 5,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 4,
+            "y": 5,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 7,
+            "y": 5,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 1,
+            "y": 6,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 2,
+            "y": 6,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 5,
+            "y": 6,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 1,
+            "y": 7,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 2,
+            "y": 7,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 3,
+            "y": 7,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "x": 4,
+            "y": 7,
+            "entity": [
+                {
+                    "type": 1000,
+                    "variant": 0,
+                    "subtype": 0,
+                    "weight": 1
+                }
+            ]
+        }
+    ],
+    "_i": "100"
+}
