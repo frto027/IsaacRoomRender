@@ -100,18 +100,11 @@ class EntityData{
 }
 class RoomDrawer{
 
-    canvas: HTMLCanvasElement;
+    rootDiv:HTMLElement;
     roomJson: RoomData;
 
-    neededImages = new Map<string, HTMLImageElement|undefined>
-    pendingImages = new Set<string>()
 
-    isBackgroundLoaded = false
-    backgroundImage:HTMLImageElement
     database:EntityImageDatabase
-
-    doorImageLoaded = false
-    doorImage:HTMLImageElement
 
     mousePosition = {x:0, y:0, enter:false, mouseDown:false}
 
@@ -119,8 +112,8 @@ class RoomDrawer{
     blockSize = 52
     scale = 1
 
-    constructor(database:EntityImageDatabase, canvas:HTMLCanvasElement, roomJson:RoomData, scale = 1){
-        this.canvas = canvas,
+    constructor(database:EntityImageDatabase, root:HTMLElement, roomJson:RoomData, scale = 1){
+        this.rootDiv = root
         this.roomJson = roomJson
 
         this.database = database
@@ -132,73 +125,14 @@ class RoomDrawer{
         roomJson.spawns.forEach(v=>{
             v.entity.forEach(e=>{
                 database.requestEntity(e.type, e.variant, e.subtype)
-                this.neededImages.set(e.type + "." + e.variant + "." + e.subtype, undefined)
             })
         })
 
-        {
-            let img:HTMLImageElement = new Image()
-            img.onload = ()=>{
-                this.isBackgroundLoaded = true
-                this.render()
-            }
-            img.src = getBackgroundUrl(0, roomJson.shape)
-            this.backgroundImage = img    
-        }
-        {
-            let img = new Image()
-            img.onload = ()=>{
-                this.doorImageLoaded = true
-                this.render()
-            }
-            img.src = "https://huiji-public.huijistatic.com/isaac/uploads/e/e9/Normal_Door.png"
-            this.doorImage = img
-        }
-
-        canvas.onmousemove = (ev)=>{
-            let rect = canvas.getBoundingClientRect()
-            this.mousePosition.x = (ev.clientX - rect.left) / scale
-            this.mousePosition.y = (ev.clientY - rect.top) / scale
-            this.mousePosition.enter = true
-            this.render()
-        }
-
-        canvas.onmousedown = (ev)=>{
-            let rect = canvas.getBoundingClientRect()
-            this.mousePosition.x = (ev.clientX - rect.left) / scale
-            this.mousePosition.y = (ev.clientY - rect.top) / scale
-            this.mousePosition.enter = true
-            this.mousePosition.mouseDown = true
-            this.render()
-            this.mousePosition.mouseDown = false
-        }
-        canvas.onmouseleave = ()=>{
-            this.mousePosition .enter = false
-            this.render()
-        }
-
-        canvas.style.imageRendering = "pixelated"
+        root.style.position = "relative"
     }
 
     startLoadImage(){
-        this.neededImages.forEach((v,k)=>{
-            if(v == undefined){
-                let theImg = k
-                let url = this.database.db.get(theImg)?.image_url
-                if(url){
-                    this.pendingImages.add(theImg)
-                    let imgElem = new Image()
-                    imgElem.onload = ()=>{
-                        this.pendingImages.delete(theImg)
-                        imgElem.onload = ()=>{}
-                        if(this.pendingImages.size == 0){
-                            this.render()
-                        }
-                    }
-                    imgElem.src = url
-                }
-            }
-        })
+        this.render()
     }
 
     destroy(){
@@ -290,112 +224,115 @@ class RoomDrawer{
         return shapes[this.roomJson.shape]
     }
 
+    pos(elem:HTMLElement, x:number, y:number, extraScale = 1){
+        elem.style.position = "absolute"
+        elem.style.transform = "translate(" + x + "px, " + y + "px)"
+    }
     render(){
-        const ctx = this.canvas.getContext("2d")
-        if(!ctx)
-            return
 
-        this.canvas.width = this.blockSize * this.roomJson.width * this.scale
-        this.canvas.height = this.blockSize * this.roomJson.height * this.scale
+        let root = this.rootDiv
+        root.innerHTML = ""
 
-        ctx.resetTransform()
-        ctx.scale(this.scale, this.scale)
-
-        ctx.clearRect(0,0,this.blockSize * this.roomJson.width, this.blockSize * this.roomJson.height)
 
         //draw background
-        if(this.isBackgroundLoaded){
-            ctx.drawImage(this.backgroundImage, 0,0)
-        }
+        let backgroundDiv = new Image()
+        backgroundDiv.src = getBackgroundUrl(0, this.roomJson.shape)
+        backgroundDiv.style.userSelect = "none"
+        backgroundDiv.setAttribute("draggable", "false")
+        root.appendChild(backgroundDiv)
+        this.pos(backgroundDiv, 0,0)
+        
         // ctx.translate(this.blockSize/2, this.blockSize/2)
 
         //draw doors
-        if(this.doorImageLoaded){
-            this.trySolveDoors()
-            for(let {x,y,exists, direction} of this.roomJson.doors){
-                let w = this.doorImage.width
-                let h = this.doorImage.height
-                ctx.save()
-
-                switch(direction){
-                    case DoorDir.TOP:
-                        ctx.translate((x+.5)* this.blockSize,(y+1) * this.blockSize)
-                        ctx.rotate(0);
-                        break;
-                    case DoorDir.LEFT:
-                        ctx.translate((x+1)* this.blockSize,(y+.5) * this.blockSize)
-                        ctx.rotate(-Math.PI / 2);
-                        break;
-                    case DoorDir.BOTTOM: 
-                    ctx.translate((x+.5)* this.blockSize,(y) * this.blockSize)
-                    ctx.rotate(Math.PI); 
+        this.trySolveDoors()
+        for(let {x,y,exists, direction} of this.roomJson.doors){
+            let img = new Image()
+            img.style.position = "absolute"
+            switch(direction){
+                case DoorDir.TOP:
+                    img.onload = ()=>{
+                        let w = img.width, h = img.height
+                        img.style.transform = "translate(" + 
+                            ((x+.5) * this.blockSize) + "px, " +
+                            ((y + 1) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) rotate(0deg) translate(0px," + (-h/2) + "px)"
+                    }
                     break;
-                    case DoorDir.RIGHT:
-                        ctx.translate((x)* this.blockSize,(y+.5) * this.blockSize)
-                        ctx.rotate(Math.PI/2);
+                case DoorDir.LEFT:
+                    img.onload = ()=>{
+                        let w = img.width, h = img.height
+                        img.style.transform = "translate(" + 
+                            ((x + 1) * this.blockSize) + "px, " +
+                            ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) rotate(-90deg) translate(0px," + (-h/2) + "px)"
+                    }
                     break;
-                }
-                ctx.drawImage(this.doorImage, -w/2, -h)
-                ctx.restore()
-
-
-                if(this.isMouseInside(x * this.blockSize, y * this.blockSize, this.blockSize, this.blockSize)){
-                    ctx.strokeStyle = "green"
-                    ctx.strokeRect(x*this.blockSize,y*this.blockSize,this.blockSize,this.blockSize)
-                }
+                case DoorDir.BOTTOM: 
+                    img.onload = ()=>{
+                        let w = img.width, h = img.height
+                        img.style.transform = "translate(" + 
+                            ((x + .5) * this.blockSize) + "px, " +
+                            ((y) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) rotate(180deg) translate(0px," + (-h/2) + "px)"
+                    }
+                break;
+                case DoorDir.RIGHT:
+                    img.onload = ()=>{
+                        let w = img.width, h = img.height
+                        img.style.transform = "translate(" + 
+                            ((x) * this.blockSize) + "px, " +
+                            ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) rotate(90deg) translate(0px," + (-h/2) + "px)"
+                    }
+                break;
             }
+            img.src = "https://huiji-public.huijistatic.com/isaac/uploads/e/e9/Normal_Door.png"
+            root.appendChild(img)
         }
+        
 
         //draw entity
         for(let {x,y,entity} of this.roomJson.spawns){
-            if(this.isMouseInside(x*this.blockSize, y * this.blockSize, this.blockSize, this.blockSize)){
-                ctx.strokeStyle = "red"
-                ctx.strokeRect(x*this.blockSize, y*this.blockSize,this.blockSize,this.blockSize)
-            }
-            
+
             for(let ent of entity){
                 const ent_id_str = ent.type + "." + ent.variant + "." + ent.subtype
-                const img = this.neededImages.get(ent_id_str)
+                const img = this.database.db.get(ent_id_str)?.image_url
                 if(!img){
-                    const margin = 0
-                    ctx.font = "16px LCDPHONE"
-                    ctx.fillText(ent.type + "." + ent.variant, x * this.blockSize + margin, (y + 1) * this.blockSize)
+                    let div = document.createElement("div")
+                    let span1 = document.createElement("span")
+                    let span2 = document.createElement("span")
+                    span1.innerText = ent.type + "." + ent.variant
+                    span1.style.display = "inline-block"
+                    span2.innerText =  "." + ent.subtype
+                    div.appendChild(span1)
+                    div.appendChild(span2)
+                    div.style.fontFamily = "LCDPHONE"
+                    div.style.fontSize = "14px"
+                    div.style.border = "solid black 1px"
+                    div.style.width = this.blockSize + "px"
+                    div.style.height = this.blockSize + "px"
+            
+                    root.appendChild(div)
+                    this.pos(div, x*this.blockSize, y*this.blockSize)
                     continue
                 }
 
-                ctx.drawImage(img, x * this.blockSize, y * this.blockSize, this.blockSize, this.blockSize)
+                // ctx.drawImage(img, x * this.blockSize, y * this.blockSize, this.blockSize, this.blockSize)
             }
         }
 
         //draw text
-        ctx.fillStyle = "white"
-        ctx.font = "16px LCDPHONE"
-
-        let textLeft = 10
-        let textY = 18
-
+        let textDiv = document.createElement("div")
+        textDiv.style.fontFamily = "LCDPHONE"
+        textDiv.style.fontSize = "16px"
+        textDiv.style.color = "white"
+        textDiv.style.marginLeft = "10px"
+        root.appendChild(textDiv)
+        this.pos(textDiv, 0,10)
         let displayText = (text:string, marginLeft:number, marginRight:number, click_copy:boolean)=>{
-            const measure = ctx.measureText(text)
-            const rectTop = textY - measure.fontBoundingBoxAscent
-            const rectBottom = textY + measure.ideographicBaseline
-            const y = 4
-            const h = rectBottom - rectTop+8
-            const w = measure.width+marginLeft + marginRight
-            if(click_copy && this.isMouseInside(textLeft, y,w,h)){
-                ctx.strokeStyle = "white"
-                ctx.strokeRect(textLeft, y, w,h)
-
-                if(this.mousePosition.mouseDown){
-                    try{
-                        (window as any).navigator.clipboard.writeText(text);
-                        (window as any).$notification.info({ content: "已经拷贝：" + text, duration:2000 });    
-                    }catch(e){
-                    }
-                }    
-            }
-            ctx.fillText(text, textLeft+marginLeft, textY)
-            textLeft += w + marginLeft + marginRight
-
+            let tx = document.createElement("span")
+            tx.innerText = text
+            tx.style.marginLeft = marginLeft + "px"
+            tx.style.marginRight = marginRight + "px"
+            // tx.style.font = "white 16px LCDPHONE"
+            textDiv.appendChild(tx)
         }
         const gotoCommandFirstPart = RoomGoToCommand[this.roomJson.type]
         if(gotoCommandFirstPart){
@@ -403,14 +340,12 @@ class RoomDrawer{
             displayText(gotoCommand, 5, 5, true)
         }
 
-        textLeft += 0
-        displayText("房间名：", 0, 0, false)
+        displayText("房间名：", 10, 0, false)
         displayText(this.roomJson.name, 0, 0, true)
-        textLeft += 10
 
         const roomShape = this.roomShapeText()
         if(roomShape){
-            displayText("房间形状：",0,0,false)
+            displayText("房间形状：",10,0,false)
             displayText(roomShape,0,0,true)
         }
     }
@@ -422,7 +357,7 @@ if(divs.length > 0){
     let imageUrlDatabase = new EntityImageDatabase()
     let roomDrawers:RoomDrawer[] = []
     for(let i=0;i<divs.length;i++){
-        let div = divs[0]
+        let div = divs[i] as HTMLElement
         
         let roomJsonStr = div.getAttribute("data-json")
         if(roomJsonStr == undefined)
@@ -440,13 +375,8 @@ if(divs.length > 0){
             continue
         }
         
-        let canvas = document.createElement("canvas")
-        canvas.width = 0
-        canvas.height = 0
-        let drawer = new RoomDrawer(imageUrlDatabase, canvas, roomJson, scale)
+        let drawer = new RoomDrawer(imageUrlDatabase, div, roomJson, scale)
         roomDrawers.push(drawer)
-        div.innerHTML = ""
-        div.appendChild(canvas)
     }
 
     imageUrlDatabase.sendUrlObtainRequest(()=>{
