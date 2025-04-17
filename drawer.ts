@@ -99,6 +99,7 @@ class EntityData{
     
 }
 class RoomDrawer{
+
     canvas: HTMLCanvasElement;
     roomJson: RoomData;
 
@@ -111,6 +112,8 @@ class RoomDrawer{
 
     doorImageLoaded = false
     doorImage:HTMLImageElement
+
+    mousePosition = {x:0, y:0, enter:false, mouseDown:false}
 
 
     blockSize = 52
@@ -151,6 +154,30 @@ class RoomDrawer{
             img.src = "https://huiji-public.huijistatic.com/isaac/uploads/e/e9/Normal_Door.png"
             this.doorImage = img
         }
+
+        canvas.onmousemove = (ev)=>{
+            let rect = canvas.getBoundingClientRect()
+            this.mousePosition.x = (ev.clientX - rect.left) / scale
+            this.mousePosition.y = (ev.clientY - rect.top) / scale
+            this.mousePosition.enter = true
+            this.render()
+        }
+
+        canvas.onmousedown = (ev)=>{
+            let rect = canvas.getBoundingClientRect()
+            this.mousePosition.x = (ev.clientX - rect.left) / scale
+            this.mousePosition.y = (ev.clientY - rect.top) / scale
+            this.mousePosition.enter = true
+            this.mousePosition.mouseDown = true
+            this.render()
+            this.mousePosition.mouseDown = false
+        }
+        canvas.onmouseleave = ()=>{
+            this.mousePosition .enter = false
+            this.render()
+        }
+
+        canvas.style.imageRendering = "pixelated"
     }
 
     startLoadImage(){
@@ -236,6 +263,33 @@ class RoomDrawer{
         }
     }
     
+    isMouseInside(x:number, y:number, w:number, h:number){
+        if(!this.mousePosition.enter){
+            return false
+        }
+        if(this.mousePosition.x < x || this.mousePosition.x >= x + w || this.mousePosition.y < y || this.mousePosition.y >= y + h)
+            return false
+        return true
+    }
+
+    roomShapeText():string|undefined{
+        const shapes = [
+            undefined,
+            "1x1",
+            "IH",
+            "IV",
+            "1x2",
+            "IIV",
+            "2x1",
+            "IIH",
+            "2x2",
+            "LTL",
+            "LTR",
+            "LBL",
+        ]
+        return shapes[this.roomJson.shape]
+    }
+
     render(){
         const ctx = this.canvas.getContext("2d")
         if(!ctx)
@@ -283,25 +337,81 @@ class RoomDrawer{
                 }
                 ctx.drawImage(this.doorImage, -w/2, -h)
                 ctx.restore()
+
+
+                if(this.isMouseInside(x * this.blockSize, y * this.blockSize, this.blockSize, this.blockSize)){
+                    ctx.strokeStyle = "green"
+                    ctx.strokeRect(x*this.blockSize,y*this.blockSize,this.blockSize,this.blockSize)
+                }
             }
         }
 
         //draw entity
         for(let {x,y,entity} of this.roomJson.spawns){
-            
-            ctx.strokeRect(x*this.blockSize, y*this.blockSize,this.blockSize,this.blockSize)
+            if(this.isMouseInside(x*this.blockSize, y * this.blockSize, this.blockSize, this.blockSize)){
+                ctx.strokeStyle = "red"
+                ctx.strokeRect(x*this.blockSize, y*this.blockSize,this.blockSize,this.blockSize)
+            }
             
             for(let ent of entity){
                 const ent_id_str = ent.type + "." + ent.variant + "." + ent.subtype
                 const img = this.neededImages.get(ent_id_str)
                 if(!img){
-                    const margin = 2
-                    ctx.fillText(ent_id_str, x * this.blockSize + margin, (y + 1) * this.blockSize, this.blockSize - 2 * margin)
+                    const margin = 0
+                    ctx.font = "16px LCDPHONE"
+                    ctx.fillText(ent.type + "." + ent.variant, x * this.blockSize + margin, (y + 1) * this.blockSize)
                     continue
                 }
 
                 ctx.drawImage(img, x * this.blockSize, y * this.blockSize, this.blockSize, this.blockSize)
             }
+        }
+
+        //draw text
+        ctx.fillStyle = "white"
+        ctx.font = "16px LCDPHONE"
+
+        let textLeft = 10
+        let textY = 18
+
+        let displayText = (text:string, marginLeft:number, marginRight:number, click_copy:boolean)=>{
+            const measure = ctx.measureText(text)
+            const rectTop = textY - measure.fontBoundingBoxAscent
+            const rectBottom = textY + measure.ideographicBaseline
+            const y = 4
+            const h = rectBottom - rectTop+8
+            const w = measure.width+marginLeft + marginRight
+            if(click_copy && this.isMouseInside(textLeft, y,w,h)){
+                ctx.strokeStyle = "white"
+                ctx.strokeRect(textLeft, y, w,h)
+
+                if(this.mousePosition.mouseDown){
+                    try{
+                        (window as any).navigator.clipboard.writeText(text);
+                        (window as any).$notification.info({ content: "已经拷贝：" + text, duration:2000 });    
+                    }catch(e){
+                    }
+                }    
+            }
+            ctx.fillText(text, textLeft+marginLeft, textY)
+            textLeft += w + marginLeft + marginRight
+
+        }
+        const gotoCommandFirstPart = RoomGoToCommand[this.roomJson.type]
+        if(gotoCommandFirstPart){
+            const gotoCommand = "goto " + gotoCommandFirstPart + "." + this.roomJson.variant
+            displayText(gotoCommand, 5, 5, true)
+        }
+
+        textLeft += 0
+        displayText("房间名：", 0, 0, false)
+        displayText(this.roomJson.name, 0, 0, true)
+        textLeft += 10
+
+        const roomShape = this.roomShapeText()
+        if(roomShape){
+            displayText("房间形状：",0,0,false)
+            displayText(roomShape,0,0,true)
         }
     }
 }
@@ -317,6 +427,11 @@ if(divs.length > 0){
         let roomJsonStr = div.getAttribute("data-json")
         if(roomJsonStr == undefined)
             continue
+        let scale = +(div.getAttribute("data-scale") || "1")
+        if(isNaN(scale))
+            scale = 1
+        if(scale <= 0)
+            scale = 1
         let roomJson:RoomData
         try{
             roomJson = JSON.parse(roomJsonStr) as RoomData
@@ -328,7 +443,7 @@ if(divs.length > 0){
         let canvas = document.createElement("canvas")
         canvas.width = 0
         canvas.height = 0
-        let drawer = new RoomDrawer(imageUrlDatabase, canvas, roomJson, 0.5)
+        let drawer = new RoomDrawer(imageUrlDatabase, canvas, roomJson, scale)
         roomDrawers.push(drawer)
         div.innerHTML = ""
         div.appendChild(canvas)
