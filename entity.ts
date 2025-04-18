@@ -1,0 +1,20 @@
+interface EntityTabxItem{
+    _id:string
+    Page:string
+    NameZH:string|null
+    NameEN:string|null
+    Image:string|null
+    Icon:string|null
+    Type:number
+    Variant:number
+    Subtype:number
+    Bestiary:number
+    BestiaryPos:number
+    Tag:string|null
+    tips:string|null
+    HP:number
+    StageHP:number
+    Unlock:number
+    Source:string|null
+    Label:number
+}

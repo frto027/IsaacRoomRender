@@ -9,6 +9,7 @@ function huijiImageUrl(fileName:string){
 function huijiPageUrl(pageName:string){
     return "/index.php?title="+encodeURIComponent(pageName)
 }
+
 class EntityDatabaseItem{
     type:number
     variant:number
@@ -16,6 +17,8 @@ class EntityDatabaseItem{
     image_url:string | undefined
     page:string | undefined
     func:ItemFunctionRenderer | undefined
+
+    entityTabx:EntityTabxItem|undefined
 
     constructor(type:number, variant:number, subtype:number){
         this.type = type
@@ -38,6 +41,8 @@ function image(src:string, sizeW:number, sizeH:number|undefined = undefined):HTM
             if(scaleH < scaleW)
                 scaleW = scaleH
         }
+        if(scaleW > 2)
+            scaleW = 2
         ret.style.transform = "translate(-" + ret.width/2 + "px, -" + ret.height/2 + "px)" + "scale(" + scaleW + ") translate(" + ret.width/2 + "px, " + ret.height/2 + "px)"
         ret.onload = undefined
     }
@@ -152,7 +157,7 @@ class EntityImageDatabase{
             dataType: "json"
         }).done((msg:any)=> {
             for (var i = 0; i < msg._embedded.length; i++) {
-                var data = msg._embedded[i]
+                var data = msg._embedded[i] as EntityTabxItem
                 //FIXME: fix query
                 var type = data.Type
                 var variant = data.Variant
@@ -168,6 +173,7 @@ class EntityImageDatabase{
                     }else{
                         item.image_url = undefined
                     }
+                    item.entityTabx = data
                 }
             }
 
@@ -210,10 +216,18 @@ class RoomDrawer{
 
     blockSize = 52
 
+    floatWindow:HTMLElement|undefined
+
     skin = new RoomSkin()
+
+    scale = 1 // only used for mouse event align
     constructor(database:EntityImageDatabase, root:HTMLElement, roomJson:RoomData){
         this.rootDiv = root
         this.roomJson = roomJson
+
+        if(root.hasAttribute("data-scale")){
+            this.scale = +root.getAttribute("data-scale")
+        }
 
         this.database = database
     
@@ -326,6 +340,63 @@ class RoomDrawer{
         elem.style.position = "absolute"
         elem.style.transform = "translate(" + x + "px, " + y + "px)"
     }
+
+    displayGridInfo(event:MouseEvent, spawns:SpawnInfo|undefined, doors:DoorInfo|undefined){
+        this.floatWindow.style.display = ""
+        this.floatWindow.innerHTML = ""
+
+        this.floatWindow.style.backgroundColor = "#6a7700e0"
+        this.floatWindow.style.padding = "16px"
+        this.floatWindow.style.border = "4px solid green"
+        this.floatWindow.style.borderRadius = "14px"
+
+        let rect = this.rootDiv.getBoundingClientRect()
+        
+        this.pos(this.floatWindow, (event.clientX - rect.x)/this.scale, (event.clientY - rect.y)/this.scale)
+        
+        let text = "这个单元格将生成以下物品之一：\n"
+        if(spawns == undefined && doors == undefined){
+            text = "这个单元格不会生成任何物品"
+        }else if(spawns != undefined){
+            spawns.entity.forEach(v=>{
+                let ent_id = v.type + "." + v.variant + "." + v.subtype
+                
+                text += "权重:" + v.weight + " 实体:" + ent_id
+                let ent_data = this.database.db.get(ent_id)
+                if(ent_data){
+                    let name = ent_data?.entityTabx?.NameZH
+                    if(name){
+                        text += "(" + name + ")"
+                    }
+                }
+                
+    
+                text += "\n"
+            })
+        }else if(doors != undefined){
+            if(doors.exists){
+                text = "这是一扇门"
+            }else{
+                text = "这里不会生成一扇门"
+            }
+        }
+
+        let close_button = document.createElement("div")
+        close_button.innerText = "[关闭]"
+        close_button.style.cursor = "pointer"
+        close_button.style.userSelect = "none"
+        close_button.onclick = ()=>{
+            this.floatWindow.style.display = "none"
+        }
+        this.floatWindow.appendChild(close_button)
+
+        let txts = document.createElement("div")
+        txts.innerText = text
+
+        this.floatWindow.appendChild(txts)
+        // console.log(spawns)
+    }
+
     render(){
 
         let root = this.rootDiv
@@ -437,6 +508,47 @@ class RoomDrawer{
 
                 let page = dbItem.page
                 
+
+                if(ent.type == 1931 && ent.variant != 0){
+                    f = (t,v,s,size)=>{
+                        let r = document.createElement("span")
+                        r.classList.add("rooms_spike")
+                        r.classList.add("rooms_spike_" + v)
+                        r.style.transform = "scale(" + size / 52 + ")"
+                        return r
+                    }
+                }
+
+                if(ent.type == 5 && ent.variant == 100 && ent.subtype != 0){
+                    f = (t,v,s,size)=>{
+                        let r = document.createElement("span")
+                        r.classList.add("icons")
+                        r.classList.add("collectibles")
+                        r.id = "collectibles_" + s
+                        r.style.transform = "scale(" + size / 52 + ")"
+
+                        let a = document.createElement("a")
+                        a.href = huijiPageUrl("c" + s)
+                        a.appendChild(r)
+                        return a
+                    }
+                }
+                
+                if(ent.type == 5 && ent.variant == 350 && ent.subtype != 0){
+                    f = (t,v,s,size)=>{
+                        let r = document.createElement("span")
+                        r.classList.add("icons")
+                        r.classList.add("trinket")
+                        r.id = "trinket_" + s
+                        r.style.transform = "scale(" + size / 52 + ")"
+
+                        let a = document.createElement("a")
+                        a.href = huijiPageUrl("t" + s)
+                        a.appendChild(r)
+                        return a
+                    }
+                }
+
                 if(f == undefined && img){
                     f = (t,v,s,size)=>{
                         let ret:HTMLElement = image(img, size)
@@ -466,6 +578,7 @@ class RoomDrawer{
                 root.appendChild(divParent)
                 this.pos(divParent, left, top)
                 divParent.appendChild(div)
+                subIndex += 1
             }
 
 
@@ -490,6 +603,64 @@ class RoomDrawer{
             // }
         }
 
+        //draw grid
+        let grid_parent = document.createElement("div")
+        root.appendChild(grid_parent)
+        grid_parent.style.width = this.roomJson.width * this.blockSize + "px"
+        grid_parent.style.height = this.roomJson.height * this.blockSize + "px"
+        let gridInfos = new Map<string, {spawn:SpawnInfo|undefined, door:DoorInfo|undefined}>()
+        this.roomJson.spawns.forEach(v=>{
+            gridInfos.set(v.x + "_" + v.y, {spawn:v,door:undefined})
+        })
+
+        this.roomJson.doors.forEach(d=>{
+            let id = d.x + "_" + d.y
+            if(gridInfos.has(id))
+                return
+            gridInfos.set(id, {spawn:undefined, door:d})
+        })
+
+        for(let x=0;x<this.roomJson.width;x++){
+            for(let y=0;y<this.roomJson.height;y++){
+                let grid_div = document.createElement("div")
+                grid_div.style.width = this.blockSize + "px"
+                grid_div.style.height=  this.blockSize + "px"
+                grid_div.classList.add("room-renderer-grid-block")
+                grid_div.style.userSelect = "none"
+                grid_div.style.cursor = "pointer"
+        
+                grid_parent.appendChild(grid_div)
+                
+                this.pos(grid_div, x*this.blockSize, y*this.blockSize)
+
+                let gridInfo = gridInfos.get(x+"_"+y)
+                if(gridInfo){
+                    grid_div.onclick = (e)=>{
+                        this.displayGridInfo(e, gridInfo.spawn, gridInfo.door)
+                    }
+                }else{
+                    grid_div.onclick = (e)=>{
+                        this.displayGridInfo(e,undefined, undefined)
+                    }
+                }
+            }
+        }
+        grid_parent.style.display = "none"
+        this.pos(grid_parent,0,0)
+
+        let GIcon = document.createElement("div")
+        let grid_parent_visible = false
+        root.appendChild(GIcon)
+        this.pos(GIcon,8,4)
+        GIcon.innerText = "[格]"
+        GIcon.style.userSelect = "none"
+        GIcon.style.cursor = "pointer"
+
+        GIcon.onclick = ()=>{
+            grid_parent_visible = !grid_parent_visible
+            grid_parent.style.display = grid_parent_visible ? "" : "none"
+        }
+
         //draw text
         let textDiv = document.createElement("div")
         textDiv.style.fontFamily = "LCDPHONE"
@@ -497,7 +668,7 @@ class RoomDrawer{
         textDiv.style.color = "white"
         textDiv.style.marginLeft = "10px"
         root.appendChild(textDiv)
-        this.pos(textDiv, 0,10)
+        this.pos(textDiv, 28,10)
         let displayText = (text:string, marginLeft:number, marginRight:number, click_copy:boolean)=>{
             let tx = document.createElement("span")
             tx.innerText = text
@@ -523,6 +694,11 @@ class RoomDrawer{
 
         displayText("难度:",10,0,false)
         displayText(this.roomJson.difficulty.toString(),0,0,false)
+
+        this.floatWindow = document.createElement("div")
+        root.appendChild(this.floatWindow)
+        this.pos(this.floatWindow, 0,0)
+        this.floatWindow.style.display = "none"
     }
 }
 
