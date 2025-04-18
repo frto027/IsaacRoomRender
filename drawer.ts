@@ -60,13 +60,13 @@ class HuijiJsonDatabase{
 
 
     sendRequest(done:()=>void){
-        var filter:any = { "$or": [] }
+        var filter:any = { "_id": {
+            "$in":[]
+        } }
         
         this.db.forEach((v,k,m)=>{
             if(v == undefined){
-                filter["$or"].push({
-                    "_id": k
-                })
+                filter["_id"]["$in"].push(k)
             }
         });
         
@@ -127,16 +127,29 @@ class EntityImageDatabase{
     sendUrlObtainRequest(done:()=>void){
         var filter:any = { "$or": [] }
         
+        var x_0_0_items = []
+
         this.db.forEach((v,k,m)=>{
-            if(v.image_url == undefined){
-                filter["$or"].push({
-                    //FIXME: fix query
-                    "Type": v.type,
-                    "Variant": v.variant,
-                    "Subtype":v.subtype
-                })
+            if(v.image_url == undefined || v.entityTabx == undefined){
+                if(v.variant == 0 && v.subtype == 0){
+                    x_0_0_items.push(v.type) //压缩请求长度，避免url过长导致接口502
+                }else{
+                    filter["$or"].push({
+                        //FIXME: fix query
+                        "Type": v.type,
+                        "Variant": v.variant,
+                        "Subtype":v.subtype
+                    })    
+                }
             }
         });
+        if(x_0_0_items.length > 0){
+            filter["$or"].push({
+                "Type":{"$in":x_0_0_items},
+                "Variant":0,
+                "Subtype":0
+            })
+        }
         
         if(filter["$or"].length == 0){
             done()
@@ -168,10 +181,10 @@ class EntityImageDatabase{
                 if(item){
                     let imgName = data.Image
                     if(imgName != undefined && typeof(imgName) == "string"){
-                        item.image_url = huijiImageUrl(imgName)
-                        item.page = data.Page
+                        item.image_url = item.image_url || huijiImageUrl(imgName)
+                        item.page = item.page || data.Page
                     }else{
-                        item.image_url = undefined
+                        // item.image_url = undefined
                     }
                     item.entityTabx = data
                 }
