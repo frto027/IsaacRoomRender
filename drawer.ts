@@ -5,12 +5,17 @@ function huijiImageUrl(fileName:string){
     let hash = md5(fileName)
     return "https://huiji-public.huijistatic.com/isaac/uploads/" + hash[0] + "/" + hash[0] + hash[1] + "/" + fileName
 }
+
+function huijiPageUrl(pageName:string){
+    return "/index.php?title="+encodeURIComponent(pageName)
+}
 class EntityDatabaseItem{
     type:number
     variant:number
     subtype:number
     image_url:string | undefined
     page:string | undefined
+    func:ItemFunctionRenderer | undefined
 
     constructor(type:number, variant:number, subtype:number){
         this.type = type
@@ -22,6 +27,24 @@ class EntityDatabaseItem{
         return this.type + "." + this.variant + "." + this.subtype
     }
 }
+
+function image(src:string, sizeW:number, sizeH:number|undefined = undefined):HTMLImageElement {
+    let ret = new Image()
+    ret.style.imageRendering = "pixelated"
+    ret.onload = ()=>{
+        let scaleW = sizeW / ret.width
+        if(sizeH != undefined){
+            let scaleH = sizeH / ret.height
+            if(scaleH < scaleW)
+                scaleW = scaleH
+        }
+        ret.style.transform = "translate(-" + ret.width/2 + "px, -" + ret.height/2 + "px)" + "scale(" + scaleW + ") translate(" + ret.width/2 + "px, " + ret.height/2 + "px)"
+        ret.onload = undefined
+    }
+    ret.src = src
+    return ret
+}
+
 class HuijiJsonDatabase{
     db = new Map<string, RoomData | undefined>()
     
@@ -80,8 +103,14 @@ class EntityImageDatabase{
         for(let ent_id in PreloadedDatabase){
             let ids = ent_id.split(".")
             let e = new EntityDatabaseItem(+ids[0], +ids[1], +ids[2])
-            e.image_url = huijiImageUrl(PreloadedDatabase[ent_id].file)
+            let file = PreloadedDatabase[ent_id].file
+            if(typeof(file) == "string"){
+                e.image_url = huijiImageUrl(file)
+            }else{
+                e.func = file
+            }
             e.page = PreloadedDatabase[ent_id].page
+            this.db.set(e.id(), e)
         }
     }
     requestEntity(type:number, variant:number, subtype:number){
@@ -133,11 +162,11 @@ class EntityImageDatabase{
                 let item = this.db.get(str)
                 if(item){
                     let imgName = data.Image
-                    if(imgName != undefined){
+                    if(imgName != undefined && typeof(imgName) == "string"){
                         item.image_url = huijiImageUrl(imgName)
                         item.page = data.Page
                     }else{
-                        item.image_url = ""
+                        item.image_url = undefined
                     }
                 }
             }
@@ -148,8 +177,26 @@ class EntityImageDatabase{
         })
     }
 }
-class EntityData{
+class RoomSkin{
+    door_img_url:string = "https://huiji-public.huijistatic.com/isaac/uploads/e/e9/Normal_Door.png"
+    getBackgroundUrl(roomtype:number, shape:number):string{
+        const default_background = [undefined,
+        "Rooms_background_shape1_room_01_basement.png",
+        "Rooms_background_shape2_room_01_basement.png",
+        "Rooms_background_shape3_room_01_basement.png",
+        "Rooms_background_shape4_room_01_basement.png",
+        "Rooms_background_shape5_room_01_basement.png",
+        "Rooms_background_shape6_room_01_basement.png",
+        "Rooms_background_shape7_room_01_basement.png",
+        "Rooms_background_shape8_room_01_basement.png",
+        "Rooms_background_shape9_room_01_basement.png",
+        "Rooms_background_shape10_room_01_basement.png",
+        "Rooms_background_shape11_room_01_basement.png",
+        "Rooms_background_shape12_room_01_basement.png",
+        ]
     
+        return default_background[shape] || ""
+    }
 }
 class RoomDrawer{
 
@@ -161,17 +208,15 @@ class RoomDrawer{
 
     mousePosition = {x:0, y:0, enter:false, mouseDown:false}
 
-
     blockSize = 52
-    scale = 1
 
-    constructor(database:EntityImageDatabase, root:HTMLElement, roomJson:RoomData, scale = 1){
+    skin = new RoomSkin()
+    constructor(database:EntityImageDatabase, root:HTMLElement, roomJson:RoomData){
         this.rootDiv = root
         this.roomJson = roomJson
 
         this.database = database
-        this.scale = scale
-
+    
         database.drawers.add(this)
 
         //entities
@@ -277,7 +322,7 @@ class RoomDrawer{
         return shapes[this.roomJson.shape]
     }
 
-    pos(elem:HTMLElement, x:number, y:number, extraScale = 1){
+    pos(elem:HTMLElement, x:number, y:number){
         elem.style.position = "absolute"
         elem.style.transform = "translate(" + x + "px, " + y + "px)"
     }
@@ -288,12 +333,15 @@ class RoomDrawer{
 
 
         //draw background
-        let backgroundDiv = new Image()
-        backgroundDiv.src = getBackgroundUrl(0, this.roomJson.shape)
-        backgroundDiv.style.userSelect = "none"
-        backgroundDiv.setAttribute("draggable", "false")
-        root.appendChild(backgroundDiv)
-        this.pos(backgroundDiv, 0,0)
+        let backgroundUrl = this.skin.getBackgroundUrl(this.roomJson.type, this.roomJson.shape)
+        if(backgroundUrl != ""){
+            let backgroundDiv = new Image()
+            backgroundDiv.src = huijiImageUrl(backgroundUrl)
+            backgroundDiv.style.userSelect = "none"
+            backgroundDiv.setAttribute("draggable", "false")
+            root.appendChild(backgroundDiv)
+            this.pos(backgroundDiv, 0,0)
+        }
         
         // ctx.translate(this.blockSize/2, this.blockSize/2)
 
@@ -302,13 +350,16 @@ class RoomDrawer{
         for(let {x,y,exists, direction} of this.roomJson.doors){
             let img = new Image()
             img.style.position = "absolute"
+            if(!exists){
+                img.style.filter = "contrast(0.5)"
+            }
             switch(direction){
                 case DoorDir.TOP:
                     img.onload = ()=>{
                         let w = img.width, h = img.height
                         img.style.transform = "translate(" + 
                             ((x+.5) * this.blockSize) + "px, " +
-                            ((y + 1) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) rotate(0deg) translate(0px," + (-h/2) + "px)"
+                            ((y + 1) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(0deg) translate(0px," + (-h/2) + "px)"
                     }
                     break;
                 case DoorDir.LEFT:
@@ -316,7 +367,7 @@ class RoomDrawer{
                         let w = img.width, h = img.height
                         img.style.transform = "translate(" + 
                             ((x + 1) * this.blockSize) + "px, " +
-                            ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) rotate(-90deg) translate(0px," + (-h/2) + "px)"
+                            ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(-90deg) translate(0px," + (-h/2) + "px)"
                     }
                     break;
                 case DoorDir.BOTTOM: 
@@ -324,7 +375,7 @@ class RoomDrawer{
                         let w = img.width, h = img.height
                         img.style.transform = "translate(" + 
                             ((x + .5) * this.blockSize) + "px, " +
-                            ((y) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) rotate(180deg) translate(0px," + (-h/2) + "px)"
+                            ((y) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(180deg) translate(0px," + (-h/2) + "px)"
                     }
                 break;
                 case DoorDir.RIGHT:
@@ -332,28 +383,43 @@ class RoomDrawer{
                         let w = img.width, h = img.height
                         img.style.transform = "translate(" + 
                             ((x) * this.blockSize) + "px, " +
-                            ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) rotate(90deg) translate(0px," + (-h/2) + "px)"
+                            ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(90deg) translate(0px," + (-h/2) + "px)"
                     }
                 break;
             }
-            img.src = "https://huiji-public.huijistatic.com/isaac/uploads/e/e9/Normal_Door.png"
+            img.src = this.skin.door_img_url
             root.appendChild(img)
         }
         
 
         //draw entity
         for(let {x,y,entity} of this.roomJson.spawns){
+            let subCount = 1
+            let rowCount = 1
+            let subScale = 1
+            for(let i=0;i<5;i++){
+                subCount = i * i
+                subScale = 1 / i
+                rowCount = i
+                if(subCount >= entity.length)
+                    break
+            }
+            let subIndex = 0
 
+
+            // let highlight_elems : HTMLElement[] = []
             for(let ent of entity){
                 const ent_id_str = ent.type + "." + ent.variant + "." + ent.subtype
-                const img = this.database.db.get(ent_id_str)?.image_url
-                if(!img){
+                let dbItem = this.database.db.get(ent_id_str)
+                const img = dbItem?.image_url
+                const func = dbItem.func
+                if(!img && !func){
                     let div = document.createElement("div")
                     let span1 = document.createElement("span")
                     let span2 = document.createElement("span")
-                    span1.innerText = ent.type + "." + ent.variant
+                    span1.innerText = "实体 " +ent.type + "."
                     span1.style.display = "inline-block"
-                    span2.innerText =  "." + ent.subtype
+                    span2.innerText =   ent.variant + "." + ent.subtype
                     div.appendChild(span1)
                     div.appendChild(span2)
                     div.style.fontFamily = "LCDPHONE"
@@ -367,8 +433,61 @@ class RoomDrawer{
                     continue
                 }
 
-                // ctx.drawImage(img, x * this.blockSize, y * this.blockSize, this.blockSize, this.blockSize)
+                let f = func
+
+                let page = dbItem.page
+                
+                if(f == undefined && img){
+                    f = (t,v,s,size)=>{
+                        let ret:HTMLElement = image(img, size)
+                        // highlight_elems.push(ret)
+                        if(page){
+                            let a = document.createElement("a")
+                            a.href = huijiPageUrl(page)
+                            a.appendChild(ret)
+                            ret = a
+                        }
+                        return ret
+                    }
+                }
+                if(f == undefined){
+                    f = (t,v,s, size)=>{
+                        let div = document.createElement("div")
+                        div.innerText = "NF_" + t+"."+v+"."+s
+                        div.style.transform = "scale(" + size / 52 + ")"
+                        return div
+                    }
+                }
+
+                let left = (x + (subIndex % rowCount) * subScale ) * this.blockSize
+                let top = (y + Math.floor(subIndex / rowCount) * subScale ) * this.blockSize
+                let div = f(ent.type,ent.variant,ent.subtype, this.blockSize * subScale) as HTMLElement
+                let divParent = document.createElement("div")
+                root.appendChild(divParent)
+                this.pos(divParent, left, top)
+                divParent.appendChild(div)
             }
+
+
+            // let grid = document.createElement("div")
+            // root.appendChild(grid)
+            // this.pos(grid, x * this.blockSize, y * this.blockSize)
+            // grid.style.width = this.blockSize + "px"
+            // grid.style.height = this.blockSize + "px"
+            // grid.onmouseenter = ()=>{
+            //     console.log("enter")
+            //     grid.style.backgroundColor = "#100000a0"
+            //     highlight_elems.forEach(e=>{
+            //         e.style.filter = "bightness(2)"
+            //     })
+            // }
+            // grid.onmouseleave = ()=>{
+            //     console.log("leave")
+            //     grid.style.backgroundColor = "#00000000"
+            //     highlight_elems.forEach(e=>{
+            //         e.style.filter = ""
+            //     })
+            // }
         }
 
         //draw text
@@ -401,6 +520,9 @@ class RoomDrawer{
             displayText("房间形状：",10,0,false)
             displayText(roomShape,0,0,true)
         }
+
+        displayText("难度:",10,0,false)
+        displayText(this.roomJson.difficulty.toString(),0,0,false)
     }
 }
 
@@ -432,11 +554,11 @@ if(divs.length > 0){
 
         pendingDivs.forEach(div=>{
             let roomJsonPath = div.getAttribute("data-path")
-            let scale = +(div.getAttribute("data-scale") || "1")
-            if(isNaN(scale))
-                scale = 1
-            if(scale <= 0)
-                scale = 1
+            // let scale = +(div.getAttribute("data-scale") || "1")
+            // if(isNaN(scale))
+            //     scale = 1
+            // if(scale <= 0)
+            //     scale = 1
             let roomJson = huijiJsonDatabase.db.get(roomJsonPath)
             if(roomJson == undefined)
             {
@@ -444,7 +566,7 @@ if(divs.length > 0){
                 return
             }
             
-            let drawer = new RoomDrawer(imageUrlDatabase, div, roomJson, scale)
+            let drawer = new RoomDrawer(imageUrlDatabase, div, roomJson)
             roomDrawers.push(drawer)
 
         })

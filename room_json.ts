@@ -128,21 +128,4 @@ const RoomGoToCommand : {[type:number]:string} = {
     [EnumRoomType.ROOM_ULTRASECRET]  : "s.ultrasecret",
  
 }
-function getBackgroundUrl(roomtype:number, shape:number):string{
-    const default_background = [undefined,
-    "https://huiji-public.huijistatic.com/isaac/uploads/4/48/Rooms_background_shape1_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/8/87/Rooms_background_shape2_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/0/06/Rooms_background_shape3_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/7/7d/Rooms_background_shape4_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/6/68/Rooms_background_shape5_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/d/de/Rooms_background_shape6_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/c/ce/Rooms_background_shape7_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/1/10/Rooms_background_shape8_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/8/83/Rooms_background_shape9_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/5/52/Rooms_background_shape10_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/9/95/Rooms_background_shape11_room_01_basement.png",
-    "https://huiji-public.huijistatic.com/isaac/uploads/5/59/Rooms_background_shape12_room_01_basement.png",
-    ]
 
-    return default_background[shape] || ""
-}
