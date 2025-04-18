@@ -1,4 +1,6 @@
 interface RoomData{
+    _id : string // key added by huiji wiki, Data:xxx.json
+
     _type : string, // "ROOM_STB" for huiji database index
     
     _file : string, // "00.special rooms.stb"

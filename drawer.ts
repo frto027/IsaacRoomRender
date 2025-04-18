@@ -22,7 +22,55 @@ class EntityDatabaseItem{
         return this.type + "." + this.variant + "." + this.subtype
     }
 }
+class HuijiJsonDatabase{
+    db = new Map<string, RoomData | undefined>()
+    
+    addRequestJson(id:string){
+        if(!this.db.has(id))
+            this.db.set(id, undefined)
+    }
 
+
+    sendRequest(done:()=>void){
+        var filter:any = { "$or": [] }
+        
+        this.db.forEach((v,k,m)=>{
+            if(v == undefined){
+                filter["$or"].push({
+                    "_id": k
+                })
+            }
+        });
+        
+        (window as any).$.ajax({
+            url: "/api/rest_v1/namespace/data",
+            method: "GET",
+            data: { filter: JSON.stringify(
+                filter
+            ) },
+            dataType: "json"
+        }).done((msg:any)=> {
+            for (var i = 0; i < msg._embedded.length; i++) {
+                let data = msg._embedded[i] as RoomData
+                try{
+                    if(!data._id.startsWith("Data:")){
+                        console.error("can't handle data:", data)
+                        continue
+                    }
+                    let key = data._id
+                    this.db.set(key, data)
+                }catch(e){
+                    console.error("error when handle room json data", data)
+                }
+            }
+
+            done();
+        }).fail(function (jqXHR:any, textStatus:any) {
+            console.log("get entity image url failed.", textStatus, jqXHR)
+        })
+    }
+    
+}
 class EntityImageDatabase{
     db = new Map<string, EntityDatabaseItem>()
 
@@ -55,6 +103,11 @@ class EntityImageDatabase{
                 })
             }
         });
+        
+        if(filter["$or"].length == 0){
+            done()
+            return
+        }
         
         (window as any).$.ajax({
             url: "/api/rest_v1/namespace/data",
@@ -354,32 +407,50 @@ class RoomDrawer{
 
 let divs = document.getElementsByClassName("room-renderer")
 if(divs.length > 0){
+    let huijiJsonDatabase = new HuijiJsonDatabase()
     let imageUrlDatabase = new EntityImageDatabase()
-    let roomDrawers:RoomDrawer[] = []
+
+    let pendingDivs = []
     for(let i=0;i<divs.length;i++){
         let div = divs[i] as HTMLElement
         
-        let roomJsonStr = div.getAttribute("data-json")
-        if(roomJsonStr == undefined)
-            continue
-        let scale = +(div.getAttribute("data-scale") || "1")
-        if(isNaN(scale))
-            scale = 1
-        if(scale <= 0)
-            scale = 1
-        let roomJson:RoomData
-        try{
-            roomJson = JSON.parse(roomJsonStr) as RoomData
-        }catch(e){
-            console.log(e)
+        let roomJsonPath = div.getAttribute("data-path")
+        if(roomJsonPath == undefined){
             continue
         }
-        
-        let drawer = new RoomDrawer(imageUrlDatabase, div, roomJson, scale)
-        roomDrawers.push(drawer)
+        if(!roomJsonPath.startsWith("Data:"))
+        {
+            roomJsonPath = "Data:" + roomJsonPath
+            div.setAttribute("data-path", roomJsonPath)
+        }
+        huijiJsonDatabase.addRequestJson(roomJsonPath)
+        pendingDivs.push(div)
     }
 
-    imageUrlDatabase.sendUrlObtainRequest(()=>{
-        roomDrawers.forEach(d=>d.startLoadImage())
+    huijiJsonDatabase.sendRequest(()=>{
+        let roomDrawers:RoomDrawer[] = []
+
+        pendingDivs.forEach(div=>{
+            let roomJsonPath = div.getAttribute("data-path")
+            let scale = +(div.getAttribute("data-scale") || "1")
+            if(isNaN(scale))
+                scale = 1
+            if(scale <= 0)
+                scale = 1
+            let roomJson = huijiJsonDatabase.db.get(roomJsonPath)
+            if(roomJson == undefined)
+            {
+                console.log("not found room json ", roomJsonPath)
+                return
+            }
+            
+            let drawer = new RoomDrawer(imageUrlDatabase, div, roomJson, scale)
+            roomDrawers.push(drawer)
+
+        })
+
+        imageUrlDatabase.sendUrlObtainRequest(()=>{
+            roomDrawers.forEach(d=>d.startLoadImage())
+        })
     })
 }
