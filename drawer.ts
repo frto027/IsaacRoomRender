@@ -2,11 +2,16 @@ function huijiImageUrl(fileName:string){
     if(fileName.indexOf("/")>= 0){
         fileName = "InvalidFileName.png"
     }
+    fileName = fileName.replace(" ","_")
     let hash = md5(fileName)
     return "https://huiji-public.huijistatic.com/isaac/uploads/" + hash[0] + "/" + hash[0] + hash[1] + "/" + fileName
 }
 
 function huijiPageUrl(pageName:string){
+    let sharp_index = pageName.indexOf("#")
+    if(sharp_index >= 0){
+        return "/index.php?title="+encodeURIComponent(pageName.substring(0,sharp_index)) + "#" + encodeURIComponent(pageName.substring(sharp_index+1))
+    }
     return "/index.php?title="+encodeURIComponent(pageName)
 }
 
@@ -127,19 +132,18 @@ class EntityImageDatabase{
     sendUrlObtainRequest(done:()=>void){
         var filter:any = { "$or": [] }
         
+        //由于数据库接口不能接受过长数据（可能是get请求的url限制），我们对?.0.0以及a.?.c的数据进行合并同类项，以构造更短的请求
         var x_0_0_items = []
-
+        var a_x_c_items = new Map<string, number[]>()
         this.db.forEach((v,k,m)=>{
             if(v.image_url == undefined || v.entityTabx == undefined){
                 if(v.variant == 0 && v.subtype == 0){
-                    x_0_0_items.push(v.type) //压缩请求长度，避免url过长导致接口502
+                    x_0_0_items.push(v.type)
                 }else{
-                    filter["$or"].push({
-                        //FIXME: fix query
-                        "Type": v.type,
-                        "Variant": v.variant,
-                        "Subtype":v.subtype
-                    })    
+                    let a_c = v.type + "_" + v.subtype
+                    if(!a_x_c_items.has(a_c))
+                        a_x_c_items.set(a_c, [])
+                    a_x_c_items.get(a_c).push(v.variant)
                 }
             }
         });
@@ -150,6 +154,23 @@ class EntityImageDatabase{
                 "Subtype":0
             })
         }
+        a_x_c_items.forEach((v,k)=>{
+            let split = k.split("_")
+            let type = +split[0]
+            let subtype = +split[1]
+            let query:any = {
+                "Type":type,
+                "Subtype":subtype,
+                "Variant":v[0]
+            }
+            if(v.length > 1){
+                query["Variant"] = {"$in":[]}
+                v.forEach(n=>{
+                    query["Variant"]["$in"].push(n)
+                })
+            }
+            filter["$or"].push(query)
+        })
         
         if(filter["$or"].length == 0){
             done()
@@ -179,7 +200,7 @@ class EntityImageDatabase{
                 var str = type + "." + variant + "." + subtype
                 let item = this.db.get(str)
                 if(item){
-                    let imgName = data.Image
+                    let imgName = /*data.Icon ||*/ data.Image
                     if(imgName != undefined && typeof(imgName) == "string"){
                         item.image_url = item.image_url || huijiImageUrl(imgName)
                         item.page = item.page || data.Page
@@ -198,8 +219,18 @@ class EntityImageDatabase{
 }
 class RoomSkin{
     door_img_url:string = "https://huiji-public.huijistatic.com/isaac/uploads/e/e9/Normal_Door.png"
-    getBackgroundUrl(roomtype:number, shape:number):string{
-        const default_background = [undefined,
+    getBackgroundUrl(roomJson:RoomData):{file:string, transform?:string}{
+
+        if(roomJson.type == 24){
+            if(roomJson.shape == 1)
+                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium.png",transform:"scale(2) translate(84px, 46px)"}
+            if(roomJson.shape == 2)
+                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium_ih.png",transform:"scale(2) translate(84px, 72px)"}
+            if(roomJson.shape == 3)
+                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium_iv.png",transform:"scale(2) translate(136px, 46px)"}
+        }
+
+        let default_background = [
         "Rooms_background_shape1_room_01_basement.png",
         "Rooms_background_shape2_room_01_basement.png",
         "Rooms_background_shape3_room_01_basement.png",
@@ -213,8 +244,18 @@ class RoomSkin{
         "Rooms_background_shape11_room_01_basement.png",
         "Rooms_background_shape12_room_01_basement.png",
         ]
+
+        let background_name = FileNameToBackgroundMap[roomJson._file]
+        if(background_name){
+            let background_array = RoomBackgroundDatabase[background_name]
+            if(background_array){
+                let background_img = background_array[roomJson.shape - 1]
+                if(background_img)
+                    return {file:background_img}
+            }
+        }
     
-        return default_background[shape] || ""
+        return {file:default_background[roomJson.shape - 1] || ""}
     }
 }
 class RoomDrawer{
@@ -234,6 +275,14 @@ class RoomDrawer{
     skin = new RoomSkin()
 
     scale = 1 // only used for mouse event align
+
+
+    click_mode = false // click to set scale 1
+    initial_transform:string //for click
+    click_mask:HTMLElement|undefined
+
+    no_operate_mode = false
+
     constructor(database:EntityImageDatabase, root:HTMLElement, roomJson:RoomData){
         this.rootDiv = root
         this.roomJson = roomJson
@@ -241,6 +290,20 @@ class RoomDrawer{
         if(root.hasAttribute("data-scale")){
             this.scale = +root.getAttribute("data-scale")
         }
+        if(root.hasAttribute("data-mode")){
+            let mode = root.getAttribute("data-mode")
+            if(mode == "click"){
+                this.click_mode = true
+            }
+            if(mode == "readonly"){
+                this.no_operate_mode = true
+            }
+        }
+
+        if(this.scale >= 1)
+            this.click_mode = false
+
+        this.initial_transform = root.style.transform
 
         this.database = database
     
@@ -355,58 +418,142 @@ class RoomDrawer{
     }
 
     displayGridInfo(event:MouseEvent, spawns:SpawnInfo|undefined, doors:DoorInfo|undefined){
+        if(this.floatWindow.style.display == ""){
+            this.floatWindow.style.transition = "transform 0.4s"
+        }
+
+        let scale = this.scale
+
+        if(this.click_mode)
+            scale = 1
+
         this.floatWindow.style.display = ""
         this.floatWindow.innerHTML = ""
 
-        this.floatWindow.style.backgroundColor = "#6a7700e0"
-        this.floatWindow.style.padding = "16px"
-        this.floatWindow.style.border = "4px solid green"
-        this.floatWindow.style.borderRadius = "14px"
+        this.floatWindow.style.backgroundColor = "rgb(0 0 0 / 74%)"
+        // this.floatWindow.style.padding = "16px"
+        // this.floatWindow.style.border = "4px solid green"
+        // this.floatWindow.style.borderRadius = "8px"
+
+        let title_div = document.createElement("div")
+        title_div.style.padding = "1px 2px 1px 6px"
+        title_div.style.backgroundColor = "#234c9d"
+        this.floatWindow.appendChild(title_div)
+
 
         let rect = this.rootDiv.getBoundingClientRect()
         
-        this.pos(this.floatWindow, (event.clientX - rect.x)/this.scale, (event.clientY - rect.y)/this.scale)
+        let x = (event.clientX - rect.x) + 8
+        let y = (event.clientY - rect.y)
+        x = Math.min(x, (this.roomJson.width - 4.8) * this.blockSize * scale)
+        y = Math.min(y, (this.roomJson.height - 1.8) * this.blockSize * scale)
         
-        let text = "这个单元格将生成以下物品之一：\n"
+        this.pos(this.floatWindow, x / scale, y / scale)
+        let title = undefined
+        let floatBody = document.createElement("div")
         if(spawns == undefined && doors == undefined){
-            text = "这个单元格不会生成任何物品"
+            title = "空白单元格"
+            floatBody.innerText = "这个单元格不会生成任何实体"
         }else if(spawns != undefined){
-            spawns.entity.forEach(v=>{
+            title = "坐标：(" + spawns.x + "," + spawns.y + ")"
+
+            if(spawns.entity.length > 1){
+                title += "多选一生成"
+                let e = document.createElement("p")
+                e.innerText = "这个单元格将生成以下内容之一："
+                floatBody.appendChild(e)
+                spawns.entity.forEach(v=>{
+                    let ent_id = v.type + "." + v.variant + "." + v.subtype
+                    
+                    let w_str = v.weight.toString()
+                    if(w_str.indexOf(".") >= 0){
+                        w_str = v.weight.toFixed(3)
+                    }
+
+                    let text = "权重:" + w_str + " ID:" + ent_id
+                    let ent_data = this.database.db.get(ent_id)
+                    if(ent_data){
+                        let name = ent_data?.entityTabx?.NameZH
+                        if(name){
+                            text += "(" + name + ")"
+                        }else if(ent_data.page){
+                            text += "(" + ent_data.page + ")"
+                        }
+                    }
+                    if(ent_data.page != undefined){
+                        let a = document.createElement("a")
+                        a.innerText = text
+                        a.href = huijiPageUrl(ent_data.page)
+                        a.target = "_blank"
+                        floatBody.appendChild(a)
+                        floatBody.appendChild(document.createElement("br"))
+                    }else{
+                        let a = document.createElement("ap")
+                        a.innerText = text
+                        floatBody.appendChild(a)
+                        floatBody.appendChild(document.createElement("br"))
+                    }
+                })
+            }else if(spawns.entity.length == 1){
+                let v = spawns.entity[0]
                 let ent_id = v.type + "." + v.variant + "." + v.subtype
-                
-                text += "权重:" + v.weight + " 实体:" + ent_id
+                let text = "生成:" + ent_id
                 let ent_data = this.database.db.get(ent_id)
                 if(ent_data){
                     let name = ent_data?.entityTabx?.NameZH
                     if(name){
                         text += "(" + name + ")"
+                    }else if(ent_data.page){
+                        text += "(" + ent_data.page + ")"
                     }
                 }
-                
-    
-                text += "\n"
-            })
-        }else if(doors != undefined){
-            if(doors.exists){
-                text = "这是一扇门"
+                if(ent_data.page != undefined){
+                    let a = document.createElement("a")
+                    a.innerText = text
+                    a.href = huijiPageUrl(ent_data.page)
+                    a.target = "_blank"
+                    floatBody.appendChild(a)
+                    floatBody.appendChild(document.createElement("br"))
+                }else{
+                    let a = document.createElement("ap")
+                    a.innerText = text
+                    floatBody.appendChild(a)
+                    floatBody.appendChild(document.createElement("br"))
+                }
+
             }else{
-                text = "这里不会生成一扇门"
+                floatBody.innerText = "这个单元格不会生成任何实体"
+            }
+        }else if(doors != undefined){
+            title = "坐标：(" + doors.x + "," + doors.y + ")"
+            if(doors.exists){
+                floatBody.innerText = "这是一扇门"
+            }else{
+                floatBody.innerText = "这里不会生成一扇门"
             }
         }
 
-        let close_button = document.createElement("div")
+        let close_button = document.createElement("span")
         close_button.innerText = "[关闭]"
         close_button.style.cursor = "pointer"
         close_button.style.userSelect = "none"
+        close_button.style.marginRight = "8px"
         close_button.onclick = ()=>{
             this.floatWindow.style.display = "none"
+            this.floatWindow.style.transition = ""
         }
-        this.floatWindow.appendChild(close_button)
+        title_div.appendChild(close_button)
 
-        let txts = document.createElement("div")
-        txts.innerText = text
+        if(title){
+            let title_txt_div = document.createElement("span")
+            title_txt_div.innerText = title
+            close_button.style.userSelect = "none"
+            title_div.appendChild(title_txt_div)
+        }
 
-        this.floatWindow.appendChild(txts)
+        floatBody.style.margin = "8px"
+
+        this.floatWindow.appendChild(floatBody)
         // console.log(spawns)
     }
 
@@ -417,7 +564,9 @@ class RoomDrawer{
 
 
         //draw background
-        let backgroundUrl = this.skin.getBackgroundUrl(this.roomJson.type, this.roomJson.shape)
+        let backgroundInfo = this.skin.getBackgroundUrl(this.roomJson)
+        let backgroundUrl = backgroundInfo.file
+
         if(backgroundUrl != ""){
             let backgroundDiv = new Image()
             backgroundDiv.src = huijiImageUrl(backgroundUrl)
@@ -425,17 +574,27 @@ class RoomDrawer{
             backgroundDiv.setAttribute("draggable", "false")
             root.appendChild(backgroundDiv)
             this.pos(backgroundDiv, 0,0)
+            if(backgroundInfo.transform){
+                backgroundDiv.style.transform = backgroundInfo.transform
+            }
+
         }
         
         // ctx.translate(this.blockSize/2, this.blockSize/2)
 
         //draw doors
         this.trySolveDoors()
+        let not_exist_door_parent = document.createElement("div")
+        not_exist_door_parent.style.width = this.roomJson.width * this.blockSize + "px"
+        not_exist_door_parent.style.height = this.roomJson.height * this.blockSize + "px"
+        not_exist_door_parent.style.display = "none"
+        this.pos(not_exist_door_parent,0,0)
+        root.appendChild(not_exist_door_parent)
         for(let {x,y,exists, direction} of this.roomJson.doors){
             let img = new Image()
             img.style.position = "absolute"
             if(!exists){
-                img.style.filter = "contrast(0.5)"
+                img.style.filter = "grayscale(1)"
             }
             switch(direction){
                 case DoorDir.TOP:
@@ -472,7 +631,12 @@ class RoomDrawer{
                 break;
             }
             img.src = this.skin.door_img_url
-            root.appendChild(img)
+            if(exists){
+                root.appendChild(img)
+            }else{
+                not_exist_door_parent.appendChild(img)
+            }
+            
         }
         
 
@@ -496,28 +660,7 @@ class RoomDrawer{
                 const ent_id_str = ent.type + "." + ent.variant + "." + ent.subtype
                 let dbItem = this.database.db.get(ent_id_str)
                 const img = dbItem?.image_url
-                const func = dbItem.func
-                if(!img && !func){
-                    let div = document.createElement("div")
-                    let span1 = document.createElement("span")
-                    let span2 = document.createElement("span")
-                    span1.innerText = "实体 " +ent.type + "."
-                    span1.style.display = "inline-block"
-                    span2.innerText =   ent.variant + "." + ent.subtype
-                    div.appendChild(span1)
-                    div.appendChild(span2)
-                    div.style.fontFamily = "LCDPHONE"
-                    div.style.fontSize = "14px"
-                    div.style.border = "solid black 1px"
-                    div.style.width = this.blockSize + "px"
-                    div.style.height = this.blockSize + "px"
-            
-                    root.appendChild(div)
-                    this.pos(div, x*this.blockSize, y*this.blockSize)
-                    continue
-                }
-
-                let f = func
+                let f = dbItem.func
 
                 let page = dbItem.page
                 
@@ -527,7 +670,7 @@ class RoomDrawer{
                         let r = document.createElement("span")
                         r.classList.add("rooms_spike")
                         r.classList.add("rooms_spike_" + v)
-                        r.style.transform = "scale(" + size / 52 + ")"
+                        r.style.transform = " translate(-12px,-12px) scale(" + 2 * size / 52 + ") translate(12px,12px)"
                         return r
                     }
                 }
@@ -542,6 +685,7 @@ class RoomDrawer{
 
                         let a = document.createElement("a")
                         a.href = huijiPageUrl("c" + s)
+                        a.target = "_blank"
                         a.appendChild(r)
                         return a
                     }
@@ -557,6 +701,7 @@ class RoomDrawer{
 
                         let a = document.createElement("a")
                         a.href = huijiPageUrl("t" + s)
+                        a.target = "_blank"
                         a.appendChild(r)
                         return a
                     }
@@ -566,22 +711,45 @@ class RoomDrawer{
                     f = (t,v,s,size)=>{
                         let ret:HTMLElement = image(img, size)
                         // highlight_elems.push(ret)
-                        if(page){
+                        if(page && !this.no_operate_mode){
                             let a = document.createElement("a")
                             a.href = huijiPageUrl(page)
+                            a.target = "_blank"
                             a.appendChild(ret)
                             ret = a
                         }
                         return ret
                     }
                 }
+
+                
                 if(f == undefined){
-                    f = (t,v,s, size)=>{
+                    f = (t,s,v,size)=>{
                         let div = document.createElement("div")
-                        div.innerText = "NF_" + t+"."+v+"."+s
+                        let span1 = document.createElement("span")
+                        let span2 = document.createElement("span")
+                        span1.innerText = "实体 " +ent.type + "."
+                        span1.style.display = "inline-block"
+                        span2.innerText =   ent.variant + "." + ent.subtype
+                        div.appendChild(span1)
+                        div.appendChild(span2)
+                        div.style.fontFamily = "LCDPHONE"
+                        div.style.fontSize = "14px"
+                        div.style.border = "solid black 1px"
+                        div.style.width = this.blockSize + "px"
+                        div.style.height = this.blockSize + "px"
                         div.style.transform = "scale(" + size / 52 + ")"
+            
                         return div
+                        root.appendChild(div)
+                        this.pos(div, x*this.blockSize, y*this.blockSize)
                     }
+                    // f = (t,v,s, size)=>{
+                    //     let div = document.createElement("div")
+                    //     div.innerText = "NF_" + t+"."+v+"."+s
+                    //     div.style.transform = "scale(" + size / 52 + ")"
+                    //     return div
+                    // }
                 }
 
                 let left = (x + (subIndex % rowCount) * subScale ) * this.blockSize
@@ -661,17 +829,36 @@ class RoomDrawer{
         grid_parent.style.display = "none"
         this.pos(grid_parent,0,0)
 
-        let GIcon = document.createElement("div")
-        let grid_parent_visible = false
-        root.appendChild(GIcon)
-        this.pos(GIcon,8,4)
-        GIcon.innerText = "[格]"
-        GIcon.style.userSelect = "none"
-        GIcon.style.cursor = "pointer"
-
-        GIcon.onclick = ()=>{
-            grid_parent_visible = !grid_parent_visible
-            grid_parent.style.display = grid_parent_visible ? "" : "none"
+        if(!this.no_operate_mode){
+            let GIcon = document.createElement("div")
+            let grid_parent_visible = false
+            root.appendChild(GIcon)
+            this.pos(GIcon,8,25)
+            GIcon.innerText = "[格]"
+            GIcon.style.userSelect = "none"
+            GIcon.style.cursor = "pointer"
+            GIcon.style.color = "white"
+            GIcon.onclick = ()=>{
+                grid_parent_visible = !grid_parent_visible
+                grid_parent.style.display = grid_parent_visible ? "" : "none"
+                GIcon.style.color = grid_parent_visible ? "green" : "white"
+            }
+    
+            if(not_exist_door_parent.children.length > 0){
+                let DoorIcon = document.createElement("div")
+                let door_visible = false
+                root.appendChild(DoorIcon)
+                this.pos(DoorIcon,8,52)
+                DoorIcon.style.color = "white"
+                DoorIcon.innerText = "[门]"
+                DoorIcon.style.userSelect = "none"
+                DoorIcon.style.cursor = "pointer"
+                DoorIcon.onclick = ()=>{
+                    door_visible = !door_visible
+                    not_exist_door_parent.style.display = door_visible ? "" : "none"
+                    DoorIcon.style.color = door_visible ? "green" : "white"
+                }    
+            }    
         }
 
         //draw text
@@ -681,7 +868,7 @@ class RoomDrawer{
         textDiv.style.color = "white"
         textDiv.style.marginLeft = "10px"
         root.appendChild(textDiv)
-        this.pos(textDiv, 28,10)
+        this.pos(textDiv, 28,16)
         let displayText = (text:string, marginLeft:number, marginRight:number, click_copy:boolean)=>{
             let tx = document.createElement("span")
             tx.innerText = text
@@ -708,10 +895,59 @@ class RoomDrawer{
         displayText("难度:",10,0,false)
         displayText(this.roomJson.difficulty.toString(),0,0,false)
 
+        displayText("type=" + this.roomJson.type + ",shape=" + this.roomJson.shape, 10,0,false)
+
         this.floatWindow = document.createElement("div")
         root.appendChild(this.floatWindow)
         this.pos(this.floatWindow, 0,0)
         this.floatWindow.style.display = "none"
+        // this.floatWindow.style.transition = ""
+
+
+        if(this.click_mode){
+            let mask = document.createElement("div")
+            this.click_mask = mask
+            mask.style.width = this.roomJson.width * this.blockSize + "px"
+            mask.style.height = this.roomJson.height * this.blockSize + "px"
+            mask.style.userSelect = "none"
+            mask.style.cursor = "pointer"
+            mask.classList.add("rooms_click_mask")
+            mask.style.textAlign = "center"
+            mask.style.overflow = "hidden"
+            mask.innerHTML = '<i class="fa fa-expand" style="height:50%;font-size:80px;transform:translateY(100%) translateY(-40px)" aria-hidden="true"></i>'
+            mask.onclick = ()=>{
+                this.click_mask.style.display = "none"
+                root.style.transform = "none"
+                root.style.zIndex = "10000"
+                let parent = this.rootDiv.parentElement
+                if(parent && parent.tagName == "span" && parent.style.zIndex == ""){
+                    parent.style.zIndex = "999987"
+                }
+            }
+            this.pos(mask,0,0)
+
+            let UnclickIcon = document.createElement("div")
+            root.appendChild(UnclickIcon)
+            this.pos(UnclickIcon,12,4)
+            UnclickIcon.style.color = "white"
+            UnclickIcon.innerHTML = '<i class="fa fa-compress" aria-hidden="true"></i>'
+            UnclickIcon.style.userSelect = "none"
+            UnclickIcon.style.cursor = "pointer"
+            UnclickIcon.onclick = ()=>{
+                this.click_mask.style.display = ""
+                this.rootDiv.style.transform = this.initial_transform
+                this.rootDiv.style.zIndex = ''
+                let parent = this.rootDiv.parentElement
+                if(parent && parent.tagName == "span" && parent.style.zIndex == "999987"){
+                    parent.style.zIndex = ''
+                }
+
+            }
+
+            root.style.transition = "transform 0.5s"
+
+            root.appendChild(mask)
+        }
     }
 }
 

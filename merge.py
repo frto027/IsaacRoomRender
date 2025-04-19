@@ -1,5 +1,6 @@
 txt = ""
 files = [
+    "dist/room_skin_db.js",
     "dist/database.js",
     "dist/urlbuilder.js",
     "dist/room_json.js",
