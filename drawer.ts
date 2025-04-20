@@ -217,47 +217,6 @@ class EntityImageDatabase{
         })
     }
 }
-class RoomSkin{
-    door_img_url:string = "https://huiji-public.huijistatic.com/isaac/uploads/e/e9/Normal_Door.png"
-    getBackgroundUrl(roomJson:RoomData):{file:string, transform?:string}{
-
-        if(roomJson.type == 24){
-            if(roomJson.shape == 1)
-                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium.png",transform:"scale(2) translate(84px, 46px)"}
-            if(roomJson.shape == 2)
-                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium_ih.png",transform:"scale(2) translate(84px, 72px)"}
-            if(roomJson.shape == 3)
-                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium_iv.png",transform:"scale(2) translate(136px, 46px)"}
-        }
-
-        let default_background = [
-        "Rooms_background_shape1_room_01_basement.png",
-        "Rooms_background_shape2_room_01_basement.png",
-        "Rooms_background_shape3_room_01_basement.png",
-        "Rooms_background_shape4_room_01_basement.png",
-        "Rooms_background_shape5_room_01_basement.png",
-        "Rooms_background_shape6_room_01_basement.png",
-        "Rooms_background_shape7_room_01_basement.png",
-        "Rooms_background_shape8_room_01_basement.png",
-        "Rooms_background_shape9_room_01_basement.png",
-        "Rooms_background_shape10_room_01_basement.png",
-        "Rooms_background_shape11_room_01_basement.png",
-        "Rooms_background_shape12_room_01_basement.png",
-        ]
-
-        let background_name = FileNameToBackgroundMap[roomJson._file]
-        if(background_name){
-            let background_array = RoomBackgroundDatabase[background_name]
-            if(background_array){
-                let background_img = background_array[roomJson.shape - 1]
-                if(background_img)
-                    return {file:background_img}
-            }
-        }
-    
-        return {file:default_background[roomJson.shape - 1] || ""}
-    }
-}
 class RoomDrawer{
 
     rootDiv:HTMLElement;
@@ -557,6 +516,10 @@ class RoomDrawer{
         // console.log(spawns)
     }
 
+    drawBackground(root:HTMLElement){
+        
+    }
+
     render(){
 
         let root = this.rootDiv
@@ -590,47 +553,57 @@ class RoomDrawer{
         not_exist_door_parent.style.display = "none"
         this.pos(not_exist_door_parent,0,0)
         root.appendChild(not_exist_door_parent)
+
+        let door_url = huijiImageUrl(this.skin.getDoorUrl(this.roomJson))
+        let door_width = 64
+        let door_height = 42
         for(let {x,y,exists, direction} of this.roomJson.doors){
-            let img = new Image()
+            let img = document.createElement("div")
+            img.style.width = door_width + "px"
+            img.style.height = door_height + "px"
+
+            let i1 = document.createElement("div")
+            i1.style.background= "url("+ door_url + ")"
+            i1.style.width = door_width +"px"
+            i1.style.height = door_height+"px"
+            i1.style.overflow = "hidden"
+            i1.style.backgroundPositionX = -door_width + "px"
+            i1.style.position = "absolute"
+            img.appendChild(i1)
+            i1 = document.createElement("div")
+            i1.style.background= "url("+ door_url + ")"
+            i1.style.width = door_width +"px"
+            i1.style.height = door_height+"px"
+            i1.style.overflow = "hidden"
+            img.appendChild(i1)
+            this.pos(i1,0,0)
             img.style.position = "absolute"
             if(!exists){
-                img.style.filter = "grayscale(1)"
+                img.style.filter = "opacity(0.5)"
             }
+            let w = door_width,h=door_height
             switch(direction){
                 case DoorDir.TOP:
-                    img.onload = ()=>{
-                        let w = img.width, h = img.height
                         img.style.transform = "translate(" + 
                             ((x+.5) * this.blockSize) + "px, " +
                             ((y + 1) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(0deg) translate(0px," + (-h/2) + "px)"
-                    }
                     break;
                 case DoorDir.LEFT:
-                    img.onload = ()=>{
-                        let w = img.width, h = img.height
                         img.style.transform = "translate(" + 
                             ((x + 1) * this.blockSize) + "px, " +
                             ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(-90deg) translate(0px," + (-h/2) + "px)"
-                    }
                     break;
                 case DoorDir.BOTTOM: 
-                    img.onload = ()=>{
-                        let w = img.width, h = img.height
                         img.style.transform = "translate(" + 
                             ((x + .5) * this.blockSize) + "px, " +
                             ((y) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(180deg) translate(0px," + (-h/2) + "px)"
-                    }
                 break;
                 case DoorDir.RIGHT:
-                    img.onload = ()=>{
-                        let w = img.width, h = img.height
                         img.style.transform = "translate(" + 
                             ((x) * this.blockSize) + "px, " +
                             ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(90deg) translate(0px," + (-h/2) + "px)"
-                    }
                 break;
             }
-            img.src = this.skin.door_img_url
             if(exists){
                 root.appendChild(img)
             }else{
@@ -877,6 +850,12 @@ class RoomDrawer{
             // tx.style.font = "white 16px LCDPHONE"
             textDiv.appendChild(tx)
         }
+
+        const stage_name = StageNames[this.roomJson._file]
+        if(stage_name){
+            displayText(stage_name, 5,5,false)
+        }
+
         const gotoCommandFirstPart = RoomGoToCommand[this.roomJson.type]
         if(gotoCommandFirstPart){
             const gotoCommand = "goto " + gotoCommandFirstPart + "." + this.roomJson.variant
@@ -914,15 +893,17 @@ class RoomDrawer{
             mask.classList.add("rooms_click_mask")
             mask.style.textAlign = "center"
             mask.style.overflow = "hidden"
-            mask.innerHTML = '<i class="fa fa-expand" style="height:50%;font-size:80px;transform:translateY(100%) translateY(-40px)" aria-hidden="true"></i>'
+            mask.innerHTML = '<i class="fa fa-expand" style="height:50%;font-size:200px;transform:translateY(100%) translateY(-100px)" aria-hidden="true"></i>'
             mask.onclick = ()=>{
                 this.click_mask.style.display = "none"
-                root.style.transform = "none"
-                root.style.zIndex = "10000"
+                this.rootDiv.style.transform = "none"
+                this.rootDiv.style.zIndex = "10000"
+                this.rootDiv.style.userSelect = ""
                 let parent = this.rootDiv.parentElement
                 if(parent && parent.tagName == "span" && parent.style.zIndex == ""){
                     parent.style.zIndex = "999987"
                 }
+                this.rootDiv.style.transition = "transform 0.5s"
             }
             this.pos(mask,0,0)
 
@@ -937,14 +918,18 @@ class RoomDrawer{
                 this.click_mask.style.display = ""
                 this.rootDiv.style.transform = this.initial_transform
                 this.rootDiv.style.zIndex = ''
+                this.rootDiv.style.userSelect = "none"
                 let parent = this.rootDiv.parentElement
                 if(parent && parent.tagName == "span" && parent.style.zIndex == "999987"){
                     parent.style.zIndex = ''
                 }
-
+                setTimeout(()=>{
+                    if(this.rootDiv.style.transform == this.initial_transform){
+                        this.rootDiv.style.transition = ""
+                    }
+                }, 1000)
             }
-
-            root.style.transition = "transform 0.5s"
+            this.rootDiv.style.userSelect = "none"
 
             root.appendChild(mask)
         }

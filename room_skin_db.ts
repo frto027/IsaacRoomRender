@@ -277,3 +277,122 @@ const FileNameToBackgroundMap = {
 	"greed/34.mortis.stb":"greed_34_mortis",
 
 }
+
+class RoomSkin{    
+    static doors = {__proto__:null, "01.basement.stb": "door_01_normaldoor.png", "02.cellar.stb": "door_12_cellardoor.png", 
+        "03.burning basement.stb": "door_01_burningbasement.png", "04.caves.stb": "door_01_normaldoor.png", 
+        "05.catacombs.stb": "door_01_normaldoor.png", "06.flooded caves.stb": "door_27_drownedcaves.png", 
+        "07.depths.stb": "door_14_depthsdoor.png", "08.necropolis.stb": "door_14_depthsdoor.png", 
+        "09.dank depths.stb": "door_14_depthsdoor.png", "10.womb.stb": "door_25_wombdoor.png", 
+        "11.utero.stb": "door_25_wombdoor.png", "12.scarred womb.stb": "door_28_scarredroomdoor.png", 
+        "13.blue womb.stb": "door_01_bluewombdoor.png", "14.sheol.stb": "door_19_sheoldoor.png", 
+        "15.cathedral.stb": "door_22_cathedraldoor.png", "16.dark room.stb": "door_21_darkroomdoor.png", 
+        "17.chest.stb": "door_23_chestdoor.png", "24.the shop.stb": "door_13_librarydoor_0.png", 
+        "25.ultra greed.stb": "door_13_librarydoor_0.png", "27.downpour.stb": "door_14_depthsdoor.png", 
+        "28.dross.stb": "door_14_depthsdoor.png", "36.backwards.stb": "door_01_normaldoor.png",
+        "30.ashpit.stb": "door_19_sheoldoor.png", "29.mines.stb": "door_01_minesdoor.png", 
+        "31.mausoleum.stb": "door_01_mausoleumdoor.png", 
+       "32.gehenna.stb": "door_01_gehennadoor.png", "33.corpse.stb": "door_01_corpsedoor.png", 
+       "35.home.stb": null
+
+    } 
+
+    static backgrounds ={
+        __proto__:null,
+        "01.basement.stb": "01_basement.png", "02.cellar.stb": "02_cellar.png", 
+        "03.burning basement.stb": "13_the burning basement.png", 
+        "04.caves.stb": "03_caves.png", "05.catacombs.stb": "04_catacombs.png", 
+        "06.flooded caves.stb": "14_the drowned caves.png", "07.depths.stb": "05_depths.png",
+        "08.necropolis.stb": "06_necropolis.png", "09.dank depths.stb": "15_the dank depths.png",
+        "10.womb.stb": "07_the womb.png", "11.utero.stb": "08_utero.png", 
+        "12.scarred womb.stb": "16_the scarred womb.png", "13.blue womb.stb": 
+        "18_blue womb.png", "14.sheol.stb": "09_sheol.png", "15.cathedral.stb": "10_cathedral.png", 
+        "16.dark room.stb": "12_darkroom.png", "17.chest.stb": "11_chest.png", 
+        "24.the shop.stb": "0b_shop.png", "25.ultra greed.stb": "0b_shop.png", 
+        "27.downpour.stb": "01x_downpour.png", "28.dross.stb": "02x_dross.png", 
+        "29.mines.stb": "03x_mines.png", "30.ashpit.stb": "04x_ashpit.png", 
+        "31.mausoleum.stb": "05x_mausoleum.png", "32.gehenna.stb": "06x_gehenna.png",
+        "33.corpse.stb": "07x_corpse.png", "35.home.stb": "0fx_hallway.png", 
+        "36.backwards.stb": "01_basement.png"
+    }
+
+
+    static dlc3_stbs = [
+        "29.mines.stb", 
+        "31.mausoleum.stb", 
+        "32.gehenna.stb", "33.corpse.stb", 
+        "35.home.stb"
+    ]
+    
+    getBackgroundUrl(roomJson:RoomData):{file:string, transform?:string}{
+
+        if(roomJson.type == 24){
+            if(roomJson.shape == 1)
+                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium.png",transform:"scale(2) translate(84px, 46px)"}
+            if(roomJson.shape == 2)
+                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium_ih.png",transform:"scale(2) translate(84px, 72px)"}
+            if(roomJson.shape == 3)
+                return {file:"Anm2_resources-dlc3_gfx_backdrop_planetarium_iv.png",transform:"scale(2) translate(136px, 46px)"}
+        }
+
+        let default_background = [
+        "Rooms_background_shape1_room_01_basement.png",
+        "Rooms_background_shape2_room_01_basement.png",
+        "Rooms_background_shape3_room_01_basement.png",
+        "Rooms_background_shape4_room_01_basement.png",
+        "Rooms_background_shape5_room_01_basement.png",
+        "Rooms_background_shape6_room_01_basement.png",
+        "Rooms_background_shape7_room_01_basement.png",
+        "Rooms_background_shape8_room_01_basement.png",
+        "Rooms_background_shape9_room_01_basement.png",
+        "Rooms_background_shape10_room_01_basement.png",
+        "Rooms_background_shape11_room_01_basement.png",
+        "Rooms_background_shape12_room_01_basement.png",
+        ]
+
+        let background_name = FileNameToBackgroundMap[roomJson._file]
+        if(background_name){
+            let background_array = RoomBackgroundDatabase[background_name]
+            if(background_array){
+                let background_img = background_array[roomJson.shape - 1]
+                if(background_img)
+                    return {file:background_img}
+            }
+        }
+    
+        return {file:default_background[roomJson.shape - 1] || ""}
+    }
+    //not used
+    getBackgroundSpriteUrl(roomJson:RoomData){
+        let index = roomJson._file.toLowerCase()
+        let split = index.indexOf("/")
+        if(split >= 0)
+            index = index.substring(split+1)
+
+        if (RoomSkin.backgrounds[index]) {
+            if (RoomSkin.dlc3_stbs.indexOf(index) >= 0){
+                return "Anm2_resources-dlc3_gfx_grid_" + RoomSkin.backgrounds[index]
+            }
+            return "Anm2_resources_gfx_grid_" + RoomSkin.backgrounds[index]
+        }
+        return "Anm2_resources_gfx_grid_door_01_normaldoor.png"
+
+    }
+
+    getDoorUrl(roomJson:RoomData){
+        if(roomJson.type == 24)
+            return "Anm2_resources-dlc3_gfx_grid_door_00x_planetariumdoor.png"
+        let index = roomJson._file.toLowerCase()
+        let split = index.indexOf("/")
+        if(split >= 0)
+            index = index.substring(split+1)
+
+        if (RoomSkin.doors[index]) {
+            if (RoomSkin.dlc3_stbs.indexOf(index) >= 0){
+                return "Anm2_resources-dlc3_gfx_grid_" + RoomSkin.doors[index]
+            }
+            return "Anm2_resources_gfx_grid_" + RoomSkin.doors[index]
+        }
+        return "Anm2_resources_gfx_grid_door_01_normaldoor.png"
+    }
+}
