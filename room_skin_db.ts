@@ -319,10 +319,19 @@ class RoomSkin {
 
 
     static dlc3_stbs = [
+        "27.downpour.stb","28.dross.stb","30.ashpit.stb",
         "29.mines.stb",
         "31.mausoleum.stb",
         "32.gehenna.stb", "33.corpse.stb",
         "35.home.stb"
+    ]
+
+    static dlc3_stbs_door = [
+        "29.mines.stb",
+        "31.mausoleum.stb",
+        "32.gehenna.stb", "33.corpse.stb",
+        "35.home.stb",
+        "13.blue womb.stb"
     ]
 
     getBackgroundUrl(roomJson: RoomData): { file: string, transform?: string } {
@@ -455,7 +464,7 @@ class RoomSkin {
             index = index.substring(split + 1)
 
         if (RoomSkin.doors[index]) {
-            if (RoomSkin.dlc3_stbs.indexOf(index) >= 0) {
+            if (RoomSkin.dlc3_stbs_door.indexOf(index) >= 0) {
                 return "Anm2_resources-dlc3_gfx_grid_" + RoomSkin.doors[index]
             }
             return "Anm2_resources_gfx_grid_" + RoomSkin.doors[index]

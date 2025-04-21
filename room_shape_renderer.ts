@@ -65,26 +65,73 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
             drawImg(9,0,1,1,x,y)
         }
         let F = ()=>{}
-
         let F_room2X2 = ()=>{
             let narrow = 0.01
             wallH(-1,-1, 4.5)
             wallHC(3.5-narrow,-1,Infinity)
             wallHC(5.5-narrow,-1,Infinity)
-            wallHC(6.5-narrow,-1,Infinity)
-            // wallHC(7.5-narrow,-1,Infinity)
             wallV(-1,-1,3)
             wallVC(-1,2-narrow,Infinity)
             wallVC(-1,3-narrow,Infinity)
-            wallVC(-1,4-narrow,Infinity)
-            for(let x = 0.5;x<=6.5;x+=2){
+            
+            for(let x = 0.5;x<=6.7;x+=2){
                 for(let y=0.5;y<=3.7;y+=1){
-                    floor(x*0.99, y*0.99,Infinity,Infinity)
+                    floor(x*0.99, y*0.99,Infinity, Infinity)
                 }
+            }      
+            wallHC(6.5-narrow,-1,Infinity)
+            wallVC(-1,4-narrow,Infinity)
+        }
+        let F_room2X2_wider = F_room2X2
+
+        if(drawer.skin.getBackgroundSpriteUrl(drawer.roomJson) == "Anm2_resources_gfx_backdrop_12_darkroom.png"){
+            F_room2X2 = ()=>{
+                let narrow = 0.01
+                wallH(-1,-1, 4.5)
+                wallHC(3.5-narrow,-1,Infinity)
+                wallHC(5.5-narrow,-1,Infinity)
+                wallV(-1,-1,3)
+                wallVC(-1,2-narrow,Infinity)
+                wallVC(-1,3-narrow,Infinity)
+                
+                for(let x = 0.5;x<=6.7;x+=2){
+                    for(let y=0.5;y<=3.7;y+=1){
+                        floor(x*0.99, y*0.99,8.5-x,4.5-y)
+                    }
+                }      
+                wallHC(6.5-narrow,-1,2)
             }
+            F_room2X2_wider = ()=>{
+                let narrow = 0.01
+                wallH(-1,-1, 4.5)
+                wallHC(3.5-narrow,-1,Infinity)
+                wallHC(5.5-narrow,-1,Infinity)
+                wallV(-1,-1,3)
+                wallVC(-1,2-narrow,Infinity)
+                wallVC(-1,3-narrow,Infinity)
+                for(let x = 0.5;x<=6.7;x+=2){
+                    for(let y=0.5;y<=3.7;y+=1){
+                        floor(x*0.99, y*0.99,8.5-x,4.5-y)
+                    }
+                }      
+    
+                wallHC(6.5-narrow,-1,Infinity)
+                wallVC(-1,4-narrow,1)
+                for(let x = 0.5;x<=6.7;x+=2){
+                    for(let y=0.5;y<=3.7;y+=1){
+                        if(x > 5&& y > 3)
+                            continue
+                        floor(x*0.99, y*0.99,Infinity,Infinity)
+                    }
+                }
+                floor(6.5*0.99, 3.5*0.99,Infinity,1.15)
+                floor(6.5*0.99, 3.5*0.99,2.1,Infinity)
+    
+    
+            }
+    
         }
         let F_2x2Corner_Center = ()=>{
-            // ctx.clearRect(-20*52,-10*52,20*52,10*52)
             centerCorner(-1,-1)
         }
         let F_2x2Corner_Wall_H = ()=>{
@@ -138,24 +185,24 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F()
                 break
             case EnumRoomShape.ROOMSHAPE_IV:
-                center(6,1,1,1)
+                center(5,1,1,1)
                 F = ()=>{
                     let narrow = 0.01
-                    wallH(-1,-1, 2.5)
+                    wallH(-1,-1, 3.5)
                     // wallHC(3.5-narrow,-1,Infinity)
                     wallV(-1,-1,3)
                     wallVC(-1,2-narrow,Infinity)
                     // floor(2.5-narrow,0.5,2.5,Infinity)
                     // floor(2.5-narrow,1.5-narrow,Infinity,Infinity)
-                    floor(0.5-narrow,0.5,1,Infinity)
-                    floor(0.5-narrow,1.5-narrow,1,Infinity)
+                    floor(0.5-narrow,0.5,2,Infinity)
+                    floor(0.5-narrow,1.5-narrow,2,Infinity)
                 }
                 F()
-                center(9,1,-1,1)
+                center(10,1,-1,1)
                 F()
-                center(6,8,1,-1)
+                center(5,8,1,-1)
                 F()
-                center(9,8,-1,-1)
+                center(10,8,-1,-1)
                 F()
                 break
             case EnumRoomShape.ROOMSHAPE_1x2:
@@ -189,27 +236,27 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F()
                 break
             case EnumRoomShape.ROOMSHAPE_IIV:
-                center(6,1,1,1)
+                center(5,1,1,1)
                 F = ()=>{
                     let narrow = 0.01
-                    wallH(-1,-1, 2.5)
+                    wallH(-1,-1, 3.5)
                     wallV(-1,-1,3)
                     wallVC(-1,2-narrow,Infinity)
                     wallVC(-1,3-narrow,Infinity)
                     wallVC(-1,4-narrow,Infinity)
                     wallVC(-1,5-narrow,Infinity)
-                    floor(0.5-narrow,0.5,1,Infinity)
-                    floor(0.5-narrow,1.5-narrow,1,Infinity)
-                    floor(0.5-narrow,2.5-narrow,1,Infinity)
-                    floor(0.5-narrow,3.5-narrow,1,Infinity)
-                    floor(0.5-narrow,4.5-narrow,1,Infinity)
+                    floor(0.5-narrow,0.5,2,Infinity)
+                    floor(0.5-narrow,1.5-narrow,2,Infinity)
+                    floor(0.5-narrow,2.5-narrow,2,Infinity)
+                    floor(0.5-narrow,3.5-narrow,2,Infinity)
+                    floor(0.5-narrow,4.5-narrow,2,Infinity)
                 }
                 F()
-                center(9,1,-1,1)
+                center(10,1,-1,1)
                 F()
-                center(6,15,1,-1)
+                center(5,15,1,-1)
                 F()
-                center(9,15,-1,-1)
+                center(10,15,-1,-1)
                 F()
                 break
             case EnumRoomShape.ROOMSHAPE_2x1:
@@ -263,7 +310,7 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 break
             case EnumRoomShape.ROOMSHAPE_2x2:
                 center(1,1,1,1)
-                F = F_room2X2
+                F = ()=>{F_room2X2();F_room2X2_wider()}
                 F()
                 center(27,1,-1,1)
                 F()
@@ -277,11 +324,12 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F = F_room2X2
                 // F()
                 center(27,1,-1,1)
-                F()
+                F();
                 center(1,15,1,-1)
                 F()
                 center(27,15,-1,-1)
-                F()
+                // F()
+                F_room2X2_wider()
 
                 center(1,8,1,1)
                 F_2x2Corner_Wall_H()
@@ -289,6 +337,7 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F_2x2Corner_Wall_V()
                 center(14,8,1,1)
                 F_2x2Corner_Center()
+                
                 break
             case EnumRoomShape.ROOMSHAPE_LTR:
                 center(1,1,1,1)
@@ -297,7 +346,8 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 center(27,1,-1,1)
                 // F()
                 center(1,15,1,-1)
-                F()
+                // F()
+                F_room2X2_wider()
                 center(27,15,-1,-1)
                 F()
 
@@ -313,7 +363,8 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F = F_room2X2
                 F()
                 center(27,1,-1,1)
-                F()
+                // F()
+                F_room2X2_wider()
                 center(1,15,1,-1)
                 // F()
                 center(27,15,-1,-1)
@@ -329,7 +380,8 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
             case EnumRoomShape.ROOMSHAPE_LBR:
                 center(1,1,1,1)
                 F = F_room2X2
-                F()
+                // F()
+                F_room2X2_wider()
                 center(27,1,-1,1)
                 F()
                 center(1,15,1,-1)

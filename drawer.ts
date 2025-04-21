@@ -2,7 +2,7 @@ function huijiImageUrl(fileName:string){
     if(fileName.indexOf("/")>= 0){
         fileName = "InvalidFileName.png"
     }
-    fileName = fileName.replace(" ","_")
+    fileName = fileName.replace(new RegExp(" ", "g"),"_")
     let hash = md5(fileName)
     return "https://huiji-public.huijistatic.com/isaac/uploads/" + hash[0] + "/" + hash[0] + hash[1] + "/" + fileName
 }
