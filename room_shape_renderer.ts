@@ -84,7 +84,7 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
         }
         let F_room2X2_wider = F_room2X2
 
-        if(drawer.skin.getBackgroundSpriteUrl(drawer.roomJson) == "Anm2_resources_gfx_backdrop_12_darkroom.png"){
+        if(drawer.skin.getBackgroundSpriteUrl(drawer.roomJson) == "Anm2_resources_gfx_backdrop_12_darkroom.png" && drawer.roomJson.shape > EnumRoomShape.ROOMSHAPE_2x2){
             F_room2X2 = ()=>{
                 let narrow = 0.01
                 wallH(-1,-1, 4.5)

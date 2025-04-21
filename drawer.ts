@@ -748,6 +748,7 @@ class RoomDrawer{
                         div.style.width = this.blockSize + "px"
                         div.style.height = this.blockSize + "px"
                         div.style.transform = "scale(" + size / 52 + ")"
+                        div.style.color = "white"
             
                         return div
                         root.appendChild(div)
