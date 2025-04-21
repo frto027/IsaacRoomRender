@@ -219,7 +219,9 @@ class EntityImageDatabase{
 }
 class RoomDrawer{
 
+    rootContainer:HTMLElement;
     rootDiv:HTMLElement;
+
     roomJson: RoomData;
 
 
@@ -237,15 +239,18 @@ class RoomDrawer{
 
 
     click_mode = false // click to set scale 1
-    initial_transform:string //for click
+    
     click_mask:HTMLElement|undefined
 
     no_operate_mode = false
 
     margin = 0
 
+    static documentFloatOverlay:HTMLElement
+    static activatingDrawer:RoomDrawer|undefined
+
     constructor(database:EntityImageDatabase, root:HTMLElement, roomJson:RoomData){
-        this.rootDiv = root
+        this.rootContainer = root
         this.roomJson = roomJson
 
         if(root.hasAttribute("data-scale")){
@@ -270,8 +275,6 @@ class RoomDrawer{
         if(this.scale >= 1)
             this.click_mode = false
 
-        this.initial_transform = root.style.transform
-
         this.database = database
     
         database.drawers.add(this)
@@ -285,6 +288,21 @@ class RoomDrawer{
 
         root.style.position = "relative"
     }
+
+    setupScaledMode(){
+        let w = this.roomJson.width * this.blockSize + this.margin * 2
+        let h = this.roomJson.height * this.blockSize + this.margin * 2
+
+        this.rootDiv.style.transform = `translate(-${w/2}px,-${h/2}px) scale(${this.scale}) translate(${w/2}px,${h/2}px)`
+        this.rootDiv.style.marginRight = (w * this.scale - w) + "px"
+        this.rootDiv.style.marginBottom = (h * this.scale - h) + "px"
+    }
+    setupNonScaledMode(){
+        this.rootDiv.style.transform = ""
+        this.rootDiv.style.marginRight = "0"
+        this.rootDiv.style.marginBottom = "0"
+    }
+
 
     startLoadImage(){
         this.render()
@@ -395,6 +413,7 @@ class RoomDrawer{
             scale = 1
 
         this.floatWindow.style.display = ""
+        this.floatWindow.style.color = "white"
         this.floatWindow.innerHTML = ""
 
         this.floatWindow.style.backgroundColor = "rgb(0 0 0 / 74%)"
@@ -523,11 +542,23 @@ class RoomDrawer{
         this.floatWindow.appendChild(floatBody)
     }
 
+    unclickFunction:()=>void
+
     render(){
         let margin = this.margin
-        let root = this.rootDiv
+        this.rootContainer.innerHTML = ""
+        
+        let root = document.createElement("div")
         root.innerHTML = ""
+        this.rootDiv = root
+        this.rootContainer.appendChild(root)
+        root.style.width = (2 * margin + this.roomJson.width * this.blockSize)+"px"
+        root.style.height = (2*margin + this.roomJson.height * this.blockSize) + "px"
+        root.style.position = "relative"
+        root.style.display = "inline-block"
 
+        this.setupScaledMode()
+        
         //draw background
         if(this.skin.getBackgroundSpriteUrl(this.roomJson) && DrawRoomBackground(root,this, margin)){
             //already draw room background with sprite texture
@@ -542,6 +573,8 @@ class RoomDrawer{
                 backgroundDiv.setAttribute("draggable", "false")
                 root.appendChild(backgroundDiv)
                 this.pos(backgroundDiv, 0,0)
+                backgroundDiv.style.left = margin + "px"
+                backgroundDiv.style.top = margin + "px"
                 if(backgroundInfo.transform){
                     backgroundDiv.style.transform = backgroundInfo.transform
                 }
@@ -866,10 +899,34 @@ class RoomDrawer{
 
 
         if(this.click_mode){
+            if(RoomDrawer.documentFloatOverlay == undefined){
+                RoomDrawer.documentFloatOverlay = document.createElement("div")
+                RoomDrawer.documentFloatOverlay.style.display = "none"
+                RoomDrawer.documentFloatOverlay.style.position = "fixed"
+                RoomDrawer.documentFloatOverlay.style.top = "0"
+                RoomDrawer.documentFloatOverlay.style.left = "0"
+                RoomDrawer.documentFloatOverlay.style.right = "0"
+                RoomDrawer.documentFloatOverlay.style.bottom = "0"
+                RoomDrawer.documentFloatOverlay.style.zIndex = "1000000"
+                RoomDrawer.documentFloatOverlay.style.background = "#000000bd"
+                RoomDrawer.documentFloatOverlay.style.textAlign = "center"
+                RoomDrawer.documentFloatOverlay.style.overflow = "auto"
+                RoomDrawer.documentFloatOverlay.style.opacity = "0"
+                RoomDrawer.documentFloatOverlay.style.transition = "opacity 0.2s"
+                RoomDrawer.documentFloatOverlay.onclick = (evt)=>{
+                    if(evt.target == RoomDrawer.documentFloatOverlay){
+                        if(RoomDrawer.activatingDrawer?.unclickFunction){
+                            RoomDrawer.activatingDrawer?.unclickFunction()
+                        }
+                    }
+                }
+                document.body.appendChild(RoomDrawer.documentFloatOverlay)    
+            }
+
             let mask = document.createElement("div")
             this.click_mask = mask
-            mask.style.width = this.roomJson.width * this.blockSize + "px"
-            mask.style.height = this.roomJson.height * this.blockSize + "px"
+            mask.style.width = this.roomJson.width * this.blockSize + 2 * margin+ "px"
+            mask.style.height = this.roomJson.height * this.blockSize + 2 * margin + "px"
             mask.style.userSelect = "none"
             mask.style.cursor = "pointer"
             mask.classList.add("rooms_click_mask")
@@ -877,15 +934,19 @@ class RoomDrawer{
             mask.style.overflow = "hidden"
             mask.innerHTML = '<i class="fa fa-expand" style="height:50%;font-size:200px;transform:translateY(100%) translateY(-100px)" aria-hidden="true"></i>'
             mask.onclick = ()=>{
+                RoomDrawer.activatingDrawer = this
+                this.rootContainer.removeChild(this.rootDiv)
+                RoomDrawer.documentFloatOverlay.appendChild(this.rootDiv)
+                RoomDrawer.documentFloatOverlay.style.display = "block"
+                // RoomDrawer.documentFloatOverlay.style.opacity = "1"
                 this.click_mask.style.display = "none"
-                this.rootDiv.style.transform = "none"
-                this.rootDiv.style.zIndex = "10000"
-                this.rootDiv.style.userSelect = ""
-                let parent = this.rootDiv.parentElement
-                if(parent && parent.tagName == "span" && parent.style.zIndex == ""){
-                    parent.style.zIndex = "999987"
-                }
-                this.rootDiv.style.transition = "transform 0.5s"
+                setTimeout(()=>{
+                    RoomDrawer.documentFloatOverlay.style.opacity = "1"
+                },50)
+
+                this.setupNonScaledMode()
+                this.rootDiv.style.transition = "all 0.5s"
+                this.rootDiv.style.top = "100px"
             }
             this.pos(mask,0,0)
 
@@ -896,22 +957,40 @@ class RoomDrawer{
             UnclickIcon.innerHTML = '<i class="fa fa-compress" aria-hidden="true"></i>'
             UnclickIcon.style.userSelect = "none"
             UnclickIcon.style.cursor = "pointer"
-            UnclickIcon.onclick = ()=>{
+            let pendingClick = false
+            this.unclickFunction = ()=>{
+                if(pendingClick)
+                    return
+                RoomDrawer.activatingDrawer = undefined
+                pendingClick = true
                 this.click_mask.style.display = ""
-                this.rootDiv.style.transform = this.initial_transform
-                this.rootDiv.style.zIndex = ''
-                this.rootDiv.style.userSelect = "none"
-                let parent = this.rootDiv.parentElement
-                if(parent && parent.tagName == "span" && parent.style.zIndex == "999987"){
-                    parent.style.zIndex = ''
-                }
+                RoomDrawer.documentFloatOverlay.removeChild(this.rootDiv)
+                // RoomDrawer.documentFloatOverlay.style.display = "none"
+                RoomDrawer.documentFloatOverlay.style.opacity = "0"
                 setTimeout(()=>{
-                    if(this.rootDiv.style.transform == this.initial_transform){
-                        this.rootDiv.style.transition = ""
-                    }
-                }, 1000)
+                    pendingClick = false
+                    RoomDrawer.documentFloatOverlay.style.display = "none"
+                    this.rootContainer.appendChild(this.rootDiv)
+                    this.rootDiv.style.left = ""
+                    this.rootDiv.style.top = ""
+                    this.setupScaledMode()
+                },200)
+
+                // this.rootContainer.style.zIndex = ''
+                // this.rootContainer.style.userSelect = "none"
+                // this.rootContainer.style.position = "relative"
+                // let parent = this.rootContainer.parentElement
+                // if(parent && parent.tagName == "span" && parent.style.zIndex == "999987"){
+                //     parent.style.zIndex = ''
+                // }
+                // setTimeout(()=>{
+                //     if(this.rootContainer.style.transform == this.initial_transform){
+                //         this.rootContainer.style.transition = ""
+                //     }
+                // }, 1000)
             }
-            this.rootDiv.style.userSelect = "none"
+            UnclickIcon.onclick = this.unclickFunction
+            this.rootContainer.style.userSelect = "none"
 
             root.appendChild(mask)
         }

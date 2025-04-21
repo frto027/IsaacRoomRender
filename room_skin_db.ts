@@ -379,10 +379,27 @@ class RoomSkin {
             case EnumRoomType.ROOM_DICE:
                 return "Anm2_resources_gfx_backdrop_0e_diceroom.png"
             case EnumRoomType.ROOM_SECRET:
-                return "Anm2_resources_gfx_backdrop_0f_secretroom.png"
+            case EnumRoomType.ROOM_SUPERSECRET:
+                        return "Anm2_resources_gfx_backdrop_0f_secretroom.png"
             case EnumRoomType.ROOM_SACRIFICE:
                 return "Anm2_resources_gfx_backdrop_0g_sacrificeroom.png"
-        }
+            case EnumRoomType.ROOM_SECRET_EXIT:
+                return 'Anm2_resources-dlc3_gfx_backdrop_0ax_downpour_entrance.png'
+            case EnumRoomType.ROOM_ULTRASECRET:
+                return 'Anm2_resources-dlc3_gfx_backdrop_0fx_hallway.png'
+            case EnumRoomType.ROOM_CURSE:
+            case EnumRoomType.ROOM_CHALLENGE:
+            case EnumRoomType.ROOM_DEVIL:
+            case EnumRoomType.ROOM_BOSSRUSH:
+            case EnumRoomType.ROOM_BLACK_MARKET:
+                return "Anm2_resources_gfx_backdrop_09_sheol.png"
+            case EnumRoomType.ROOM_ANGEL:
+                return "Anm2_resources_gfx_backdrop_10_cathedral.png"
+            case EnumRoomType.ROOM_CHEST:
+                return "Anm2_resources_gfx_backdrop_11_chest.png"
+                case EnumRoomType.ROOM_DICE:
+                    return "Anm2_resources_gfx_backdrop_11_chest.png"
+                }
 
         let index = roomJson._file.toLowerCase()
         let split = index.indexOf("/")
@@ -399,8 +416,39 @@ class RoomSkin {
     }
 
     getDoorUrl(roomJson: RoomData) {
-        if (roomJson.type == 24)
-            return "Anm2_resources-dlc3_gfx_grid_door_00x_planetariumdoor.png"
+        switch (roomJson.type) {
+            case EnumRoomType.ROOM_PLANETARIUM:
+                return "Anm2_resources-dlc3_gfx_grid_door_00x_planetariumdoor.png"
+            case EnumRoomType.ROOM_SECRET_EXIT:
+                return "Anm2_resources-dlc3_gfx_grid_door_01_corpsedoor.png"
+            case EnumRoomType.ROOM_TREASURE:
+                return 'Anm2_resources_gfx_grid_door_02_treasureroomdoor.png'
+            case EnumRoomType.ROOM_CHALLENGE:
+                return 'Anm2_resources_gfx_grid_door_03_ambushroomdoor.png'
+            case EnumRoomType.ROOM_CURSE:
+                return 'Anm2_resources_gfx_grid_door_04_selfsacrificeroomdoor.png'
+            case EnumRoomType.ROOM_ARCADE:
+                return 'Anm2_resources_gfx_grid_door_05_arcaderoomdoor.png'
+            case EnumRoomType.ROOM_DEVIL:
+                return 'Anm2_resources_gfx_grid_door_07_devilroomdoor.png'
+            case EnumRoomType.ROOM_ANGEL:
+                return 'Anm2_resources_gfx_grid_door_07_holyroomdoor.png'
+            // case EnumRoomType.ROOM_DUNGEON:
+            //     return 'Anm2_resources_gfx_grid_door_09_bossambushroomdoor.png'
+            case EnumRoomType.ROOM_LIBRARY:
+                return 'Anm2_resources_gfx_grid_door_13_librarydoor.png'
+            case EnumRoomType.ROOM_BOSS:
+                return 'Anm2_resources_gfx_grid_door_10_bossroomdoor.png'
+            case EnumRoomType.ROOM_SECRET:
+            case EnumRoomType.ROOM_SUPERSECRET:
+                return 'Anm2_resources_gfx_grid_door_08_holeinwall.png'
+            case EnumRoomType.ROOM_SACRIFICE:
+                return 'Anm2_resources_gfx_grid_door_00_sacrificeroomdoor.png'
+            case EnumRoomType.ROOM_CHEST:
+                return 'Anm2_resources_gfx_grid_door_02b_chestroomdoor.png'
+            case EnumRoomType.ROOM_DICE:
+                return 'Anm2_resources_gfx_grid_door_00_diceroomdoor.png'
+            }
         let index = roomJson._file.toLowerCase()
         let split = index.indexOf("/")
         if (split >= 0)

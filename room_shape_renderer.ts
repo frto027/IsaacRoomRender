@@ -1,20 +1,24 @@
 function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
     if([
         EnumRoomType.ROOM_PLANETARIUM,
-        EnumRoomType.ROOM_LIBRARY,
-        EnumRoomType.ROOM_SHOP,
-        EnumRoomType.ROOM_ISAACS,
-        EnumRoomType.ROOM_BARREN,
-        EnumRoomType.ROOM_ARCADE,
-        EnumRoomType.ROOM_DICE,
-        EnumRoomType.ROOM_SECRET,
-        EnumRoomType.ROOM_SACRIFICE,
+        EnumRoomType.ROOM_ERROR,
+        EnumRoomType.ROOM_DUNGEON,
+        // EnumRoomType.ROOM_LIBRARY,
+        // EnumRoomType.ROOM_SHOP,
+        // EnumRoomType.ROOM_ISAACS,
+        // EnumRoomType.ROOM_BARREN,
+        // EnumRoomType.ROOM_ARCADE,
+        // EnumRoomType.ROOM_DICE,
+        // EnumRoomType.ROOM_SECRET,
+        // EnumRoomType.ROOM_SACRIFICE,
     ].indexOf(drawer.roomJson.type) >= 0){
         return false
     }
 
     let backgroundDiv = document.createElement("canvas")
     backgroundDiv.style.position = "absolute"
+    backgroundDiv.style.left = "0"
+    backgroundDiv.style.top = "0"
     // backgroundDiv.style.transform = `translate(-${margin*1.5}px,-${margin*1.5}px)`
 
     let w = drawer.roomJson.width * 52 + margin * 2
