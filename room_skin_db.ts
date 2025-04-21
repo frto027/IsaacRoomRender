@@ -363,7 +363,7 @@ class RoomSkin {
 
         return { file: default_background[roomJson.shape - 1] || "" }
     }
-    //not used
+
     getBackgroundSpriteUrl(roomJson: RoomData) {
         switch (roomJson.type) {
             case EnumRoomType.ROOM_LIBRARY:
