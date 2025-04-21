@@ -242,6 +242,8 @@ class RoomDrawer{
 
     no_operate_mode = false
 
+    margin = 0
+
     constructor(database:EntityImageDatabase, root:HTMLElement, roomJson:RoomData){
         this.rootDiv = root
         this.roomJson = roomJson
@@ -257,6 +259,12 @@ class RoomDrawer{
             if(mode == "readonly"){
                 this.no_operate_mode = true
             }
+        }
+        if(root.hasAttribute("data-margin")){
+            let margin = +root.getAttribute("data-margin")
+            if(isNaN(margin))
+                margin = 0
+            this.margin=margin
         }
 
         if(this.scale >= 1)
@@ -513,38 +521,33 @@ class RoomDrawer{
         floatBody.style.margin = "8px"
 
         this.floatWindow.appendChild(floatBody)
-        // console.log(spawns)
-    }
-
-    drawBackground(root:HTMLElement){
-        
     }
 
     render(){
-
+        let margin = this.margin
         let root = this.rootDiv
         root.innerHTML = ""
 
-
         //draw background
-        let backgroundInfo = this.skin.getBackgroundUrl(this.roomJson)
-        let backgroundUrl = backgroundInfo.file
-
-        if(backgroundUrl != ""){
-            let backgroundDiv = new Image()
-            backgroundDiv.src = huijiImageUrl(backgroundUrl)
-            backgroundDiv.style.userSelect = "none"
-            backgroundDiv.setAttribute("draggable", "false")
-            root.appendChild(backgroundDiv)
-            this.pos(backgroundDiv, 0,0)
-            if(backgroundInfo.transform){
-                backgroundDiv.style.transform = backgroundInfo.transform
+        if(this.skin.getBackgroundSpriteUrl(this.roomJson) && DrawRoomBackground(root,this, margin)){
+            //already draw room background with sprite texture
+        }else{
+            let backgroundInfo = this.skin.getBackgroundUrl(this.roomJson)
+            let backgroundUrl = backgroundInfo.file
+    
+            if(backgroundUrl != ""){
+                let backgroundDiv = new Image()
+                backgroundDiv.src = huijiImageUrl(backgroundUrl)
+                backgroundDiv.style.userSelect = "none"
+                backgroundDiv.setAttribute("draggable", "false")
+                root.appendChild(backgroundDiv)
+                this.pos(backgroundDiv, 0,0)
+                if(backgroundInfo.transform){
+                    backgroundDiv.style.transform = backgroundInfo.transform
+                }
             }
-
         }
         
-        // ctx.translate(this.blockSize/2, this.blockSize/2)
-
         //draw doors
         this.trySolveDoors()
         let not_exist_door_parent = document.createElement("div")
@@ -585,23 +588,23 @@ class RoomDrawer{
             switch(direction){
                 case DoorDir.TOP:
                         img.style.transform = "translate(" + 
-                            ((x+.5) * this.blockSize) + "px, " +
-                            ((y + 1) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(0deg) translate(0px," + (-h/2) + "px)"
+                            ((x+.5) * this.blockSize + margin) + "px, " +
+                            ((y + 1) * this.blockSize + margin) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(0deg) translate(0px," + (-h/2) + "px)"
                     break;
                 case DoorDir.LEFT:
                         img.style.transform = "translate(" + 
-                            ((x + 1) * this.blockSize) + "px, " +
-                            ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(-90deg) translate(0px," + (-h/2) + "px)"
+                            ((x + 1) * this.blockSize + margin) + "px, " +
+                            ((y + .5) * this.blockSize + margin) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(-90deg) translate(0px," + (-h/2) + "px)"
                     break;
                 case DoorDir.BOTTOM: 
                         img.style.transform = "translate(" + 
-                            ((x + .5) * this.blockSize) + "px, " +
-                            ((y) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(180deg) translate(0px," + (-h/2) + "px)"
+                            ((x + .5) * this.blockSize + margin) + "px, " +
+                            ((y) * this.blockSize + margin) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(180deg) translate(0px," + (-h/2) + "px)"
                 break;
                 case DoorDir.RIGHT:
                         img.style.transform = "translate(" + 
-                            ((x) * this.blockSize) + "px, " +
-                            ((y + .5) * this.blockSize) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(90deg) translate(0px," + (-h/2) + "px)"
+                            ((x) * this.blockSize + margin) + "px, " +
+                            ((y + .5) * this.blockSize + margin) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(90deg) translate(0px," + (-h/2) + "px)"
                 break;
             }
             if(exists){
@@ -725,8 +728,8 @@ class RoomDrawer{
                     // }
                 }
 
-                let left = (x + (subIndex % rowCount) * subScale ) * this.blockSize
-                let top = (y + Math.floor(subIndex / rowCount) * subScale ) * this.blockSize
+                let left = (x + (subIndex % rowCount) * subScale ) * this.blockSize + margin
+                let top = (y + Math.floor(subIndex / rowCount) * subScale ) * this.blockSize + margin
                 let div = f(ent.type,ent.variant,ent.subtype, this.blockSize * subScale) as HTMLElement
                 let divParent = document.createElement("div")
                 root.appendChild(divParent)
@@ -734,27 +737,6 @@ class RoomDrawer{
                 divParent.appendChild(div)
                 subIndex += 1
             }
-
-
-            // let grid = document.createElement("div")
-            // root.appendChild(grid)
-            // this.pos(grid, x * this.blockSize, y * this.blockSize)
-            // grid.style.width = this.blockSize + "px"
-            // grid.style.height = this.blockSize + "px"
-            // grid.onmouseenter = ()=>{
-            //     console.log("enter")
-            //     grid.style.backgroundColor = "#100000a0"
-            //     highlight_elems.forEach(e=>{
-            //         e.style.filter = "bightness(2)"
-            //     })
-            // }
-            // grid.onmouseleave = ()=>{
-            //     console.log("leave")
-            //     grid.style.backgroundColor = "#00000000"
-            //     highlight_elems.forEach(e=>{
-            //         e.style.filter = ""
-            //     })
-            // }
         }
 
         //draw grid
@@ -800,7 +782,7 @@ class RoomDrawer{
             }
         }
         grid_parent.style.display = "none"
-        this.pos(grid_parent,0,0)
+        this.pos(grid_parent,margin,margin)
 
         if(!this.no_operate_mode){
             let GIcon = document.createElement("div")
