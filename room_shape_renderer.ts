@@ -31,9 +31,7 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
 
     let img = new Image()
 
-    img.onload = ()=>{
-        img.onload = undefined
-
+    let redraw = ()=>{
         function center(x,y,sx,sy){
             ctx.resetTransform()
             ctx.translate(x*52,y*52)
@@ -68,9 +66,12 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
         let F_room2X2 = ()=>{
             let narrow = 0.01
             wallH(-1,-1, 4.5)
-            wallHC(3.5-narrow,-1,Infinity)
-            wallHC(5.5-narrow,-1,Infinity)
+            wallHC(1.5-narrow,-1,Infinity)
+            wallHC(4.5-narrow,-1,Infinity)
+            wallHC(4-narrow,-1,Infinity)
+            wallHC(6-narrow,-1,Infinity)
             wallV(-1,-1,3)
+            wallVC(-1,1-narrow,Infinity)
             wallVC(-1,2-narrow,Infinity)
             wallVC(-1,3-narrow,Infinity)
             
@@ -79,7 +80,6 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                     floor(x*0.99, y*0.99,Infinity, Infinity)
                 }
             }      
-            wallHC(6.5-narrow,-1,Infinity)
             wallVC(-1,4-narrow,Infinity)
         }
         let F_room2X2_wider = F_room2X2
@@ -136,7 +136,9 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
         }
         let F_2x2Corner_Wall_H = ()=>{
             wallH(-1,-1,Infinity)
-            wallHC(3.5, -1, Infinity)
+            wallHC(3, -1, Infinity)
+            wallHC(4, -1, Infinity)
+            wallHC(5, -1, Infinity)
             wallHC(5.5, -1, Infinity)
         }
         let F_2x2Corner_Wall_V = ()=>{
@@ -151,6 +153,7 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                     let narrow = 0.01
                     wallH(-1,-1, 4.5)
                     wallHC(3.5-narrow,-1,Infinity)
+                    wallHC(4-narrow,-1,2)
                     wallV(-1,-1,3)
                     wallVC(-1,2-narrow,Infinity)
                     floor(2.5-narrow,0.5,Infinity,Infinity)
@@ -189,7 +192,7 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F = ()=>{
                     let narrow = 0.01
                     wallH(-1,-1, 3.5)
-                    // wallHC(3.5-narrow,-1,Infinity)
+                    wallHC(1.5-narrow,-1,1)
                     wallV(-1,-1,3)
                     wallVC(-1,2-narrow,Infinity)
                     // floor(2.5-narrow,0.5,2.5,Infinity)
@@ -211,7 +214,9 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                     let narrow = 0.01
                     wallH(-1,-1, 4.5)
                     wallHC(3.5-narrow,-1,Infinity)
+                    wallHC(4-narrow,-1,Infinity)
                     wallV(-1,-1,3)
+                    wallVC(-1,1-narrow,Infinity)
                     wallVC(-1,2-narrow,Infinity)
                     wallVC(-1,3-narrow,Infinity)
                     wallVC(-1,4-narrow,Infinity)
@@ -240,7 +245,9 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F = ()=>{
                     let narrow = 0.01
                     wallH(-1,-1, 3.5)
+                    wallHC(1.5,-1,1)
                     wallV(-1,-1,3)
+                    wallVC(-1,1-narrow,Infinity)
                     wallVC(-1,2-narrow,Infinity)
                     wallVC(-1,3-narrow,Infinity)
                     wallVC(-1,4-narrow,Infinity)
@@ -264,9 +271,10 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F = ()=>{
                     let narrow = 0.01
                     wallH(-1,-1, 4.5)
+                    wallHC(1.5-narrow,-1,Infinity)
                     wallHC(3.5-narrow,-1,Infinity)
-                    wallHC(5.5-narrow,-1,Infinity)
-                    wallHC(7.5-narrow,-1,Infinity)
+                    wallHC(4.5-narrow,-1,Infinity)
+                    wallHC(6.5-narrow,-1,Infinity)
                     wallV(-1,-1,3)
                     wallVC(-1,2-narrow,Infinity)
                     floor(6.5-narrow,0.5,Infinity,Infinity)
@@ -291,8 +299,9 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 F = ()=>{
                     let narrow = 0.01
                     wallH(-1,-1, 4.5)
+                    wallHC(1.5-narrow,-1,Infinity)
                     wallHC(3.5-narrow,-1,Infinity)
-                    wallHC(5.5-narrow,-1,Infinity)
+                    wallHC(6.5-narrow,-1,Infinity)
                     wallHC(7.5-narrow,-1,Infinity)
                     wallV(-1,-1,2.5)
                     floor(6.5-narrow,0.5,Infinity,Infinity)
@@ -398,6 +407,11 @@ function DrawRoomBackground(root:HTMLElement, drawer:RoomDrawer, margin:number){
                 break
         }
     }
+    img.onload = ()=>{
+        img.onload = undefined
+        redraw()
+    }
+    (backgroundDiv as any).oncontextrestored = redraw
     img.src = huijiImageUrl(drawer.skin.getBackgroundSpriteUrl(drawer.roomJson))
     return true
 }

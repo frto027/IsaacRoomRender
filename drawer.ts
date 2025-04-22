@@ -1,3 +1,5 @@
+let verbose = window.location.href.indexOf("verbose=1") >= 0
+
 function huijiImageUrl(fileName:string){
     if(fileName.indexOf("/")>= 0){
         fileName = "InvalidFileName.png"
@@ -99,7 +101,19 @@ class HuijiJsonDatabase{
 
             done();
         }).fail(function (jqXHR:any, textStatus:any) {
-            console.log("get entity image url failed.", textStatus, jqXHR)
+            console.log("房间布局工具：无法下载json数据据", textStatus, jqXHR);
+            let report_retry = 0
+            function reportFailed(){
+                try{
+                    (window as any).$notification.error({content:"房间布局加载失败（常见可能原因：当前页面内房间布局数量过多）"})
+                }catch(e){
+                    report_retry++
+                    if(report_retry < 20){
+                        setTimeout(reportFailed, 1000)
+                    }
+                }
+            }
+            reportFailed()
         })
     }
     
@@ -213,6 +227,7 @@ class EntityImageDatabase{
 
             done();
         }).fail(function (jqXHR:any, textStatus:any) {
+            (window as any).$notification.error({content:"房间布局零件：实体数据加载失败（常见可能原因：当前页面内房间布局数量过多）"})
             console.log("get entity image url failed.", textStatus, jqXHR)
         })
     }
@@ -415,6 +430,7 @@ class RoomDrawer{
         this.floatWindow.style.display = ""
         this.floatWindow.style.color = "white"
         this.floatWindow.innerHTML = ""
+        this.floatWindow.style.zIndex = "90001"
 
         this.floatWindow.style.backgroundColor = "rgb(0 0 0 / 74%)"
         // this.floatWindow.style.padding = "16px"
@@ -551,6 +567,7 @@ class RoomDrawer{
         let root = document.createElement("div")
         root.innerHTML = ""
         this.rootDiv = root
+        root.style.textAlign = "left"
         this.rootContainer.appendChild(root)
         root.style.width = (2 * margin + this.roomJson.width * this.blockSize)+"px"
         root.style.height = (2*margin + this.roomJson.height * this.blockSize) + "px"
@@ -562,6 +579,14 @@ class RoomDrawer{
         //draw background
         if(this.skin.getBackgroundSpriteUrl(this.roomJson) && DrawRoomBackground(root,this, margin)){
             //already draw room background with sprite texture
+        }else if(this.roomJson.type == EnumRoomType.ROOM_DUNGEON){
+            //draw black background
+            let bg = document.createElement("div")
+            bg.style.width = this.roomJson.width * this.blockSize + 2 * margin + "px"
+            bg.style.height = this.roomJson.height * this.blockSize + 2 * margin + "px"
+            bg.style.background = "black"
+            root.appendChild(bg)
+            this.pos(bg,0,0)
         }else{
             let backgroundInfo = this.skin.getBackgroundUrl(this.roomJson)
             let backgroundUrl = backgroundInfo.file
@@ -640,6 +665,7 @@ class RoomDrawer{
                             ((y + .5) * this.blockSize + margin) + "px) translate("+(-w/2)+"px," + (-h/2)+ "px) scale(1.5) rotate(90deg) translate(0px," + (-h/2) + "px)"
                 break;
             }
+            img.style.zIndex = "60001"
             if(exists){
                 root.appendChild(img)
             }else{
@@ -663,6 +689,7 @@ class RoomDrawer{
             }
             let subIndex = 0
 
+            let zIndex = 1000
 
             // let highlight_elems : HTMLElement[] = []
             for(let ent of entity){
@@ -713,6 +740,98 @@ class RoomDrawer{
                         a.target = "_blank"
                         a.appendChild(r)
                         return a
+                    }
+                }
+
+                if(ent.type == 6000){
+                    let x = 0
+                    let y = 0
+                    let gen_func = ()=>{
+                        zIndex = 999
+                        let r = document.createElement("div")
+                        r.style.width = "26px"
+                        r.style.height = "26px"
+                        this.pos(r, 0,0)
+                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/9/9b/Anm2_resources-dlc3_gfx_grid_grid_rails.png)"
+                        r.style.backgroundPositionX = x*-26 + "px"
+                        r.style.backgroundPositionY = y*-26 + "px"
+                        r.style.overflow = "hidden"
+                        r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
+                        return r
+                    }
+                    switch(ent.variant){
+                        case 0:
+                            x = 0, y=0, f=gen_func;
+                            break
+                        case 1:
+                            x=1,y=0,f=gen_func
+                            break
+                        case 2: x=0,y=1,f=gen_func;break;
+                        case 3:x=1,y=1,f=gen_func;break;
+                        case 4:x=0;y=2;f=gen_func;break;
+                        case 5:x=1;y=2;f=gen_func;break;
+                        case 6:x=2;y=2;f=gen_func;break;
+                        case 7:x=2;y=0;f=gen_func;break;
+                        case 8:x=3;y=0;f=gen_func;break;
+                        case 9:x=2;y=1;f=gen_func;break;
+                        case 10:x=3;y=1;f=gen_func;break;
+                    }
+                }
+
+                if(ent.type == 0 && ent.variant == 10){
+                    f = ()=>{
+                        let r = document.createElement("div")
+                        r.style.width = "26px"
+                        r.style.height = "26px"
+                        this.pos(r, 0,0)
+                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
+                        r.style.overflow = "hidden"
+                        r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
+                        return r
+                    }
+                }
+
+                if(ent.type == 0 && ent.variant == 20){
+                    f = ()=>{
+                        let r = document.createElement("div")
+                        r.style.width = "26px"
+                        r.style.height = "26px"
+                        this.pos(r, 0,0)
+                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
+                        r.style.backgroundPositionX = 1*-26 + "px"
+                        r.style.backgroundPositionY = 0*-26 + "px"
+                        r.style.overflow = "hidden"
+                        r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
+                        return r
+                    }
+                }
+                if(ent.type == 0 && ent.variant == 30){
+                    f = ()=>{
+                        let r = document.createElement("div")
+                        r.style.width = "26px"
+                        r.style.height = "26px"
+                        this.pos(r, 0,0)
+                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
+                        r.style.backgroundPositionX = 1*-26 + "px"
+                        r.style.backgroundPositionY = 1*-26 + "px"
+                        r.style.overflow = "hidden"
+                        r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
+                        return r
+                    }
+                }
+                if(this.roomJson.type == EnumRoomType.ROOM_DUNGEON && ent.type == 1900 && ent.subtype == 0 && ent.variant == 0){
+                    f = ()=>{
+                        let r = document.createElement("div")
+                        r.style.width = "26px"
+                        r.style.height = "52px"
+                        this.pos(r, 0,0)
+                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
+                        r.style.backgroundPositionX = 2*-26 + "px"
+                        r.style.backgroundPositionY = 1*-26 + "px"
+                        r.style.overflow = "hidden"
+                        r.style.transform = "translate(0,-13px) translate(-13px,-13px) scale(2) translate(13px,13px)"
+                        zIndex = 300 - y
+                        return r
                     }
                 }
 
@@ -769,6 +888,7 @@ class RoomDrawer{
                 root.appendChild(divParent)
                 this.pos(divParent, left, top)
                 divParent.appendChild(div)
+                divParent.style.zIndex = zIndex.toString()
                 subIndex += 1
             }
         }
@@ -778,6 +898,8 @@ class RoomDrawer{
         root.appendChild(grid_parent)
         grid_parent.style.width = this.roomJson.width * this.blockSize + "px"
         grid_parent.style.height = this.roomJson.height * this.blockSize + "px"
+        grid_parent.style.zIndex = "70000"
+
         let gridInfos = new Map<string, {spawn:SpawnInfo|undefined, door:DoorInfo|undefined}>()
         this.roomJson.spawns.forEach(v=>{
             gridInfos.set(v.x + "_" + v.y, {spawn:v,door:undefined})
@@ -818,11 +940,17 @@ class RoomDrawer{
         grid_parent.style.display = "none"
         this.pos(grid_parent,margin,margin)
 
+        let iconNextY = 25
+        let iconPos = (e:HTMLElement)=>{
+            this.pos(e,8,iconNextY)
+            e.style.zIndex = "80000"
+            iconNextY += 20
+        }
         if(!this.no_operate_mode){
             let GIcon = document.createElement("div")
             let grid_parent_visible = false
             root.appendChild(GIcon)
-            this.pos(GIcon,8,25)
+            iconPos(GIcon)
             GIcon.innerText = "[格]"
             GIcon.style.userSelect = "none"
             GIcon.style.cursor = "pointer"
@@ -832,12 +960,24 @@ class RoomDrawer{
                 grid_parent.style.display = grid_parent_visible ? "" : "none"
                 GIcon.style.color = grid_parent_visible ? "green" : "white"
             }
+
+            {
+                let SourceIcon = document.createElement("a")
+                root.appendChild(SourceIcon)
+                iconPos(SourceIcon)
+                SourceIcon.style.color = "white"
+                SourceIcon.innerText = "[源]"
+                SourceIcon.style.userSelect = "none"
+                SourceIcon.style.cursor = "pointer"
+                SourceIcon.href = huijiPageUrl(this.roomJson._id)
+                SourceIcon.target = "_blank"    
+            }
     
             if(not_exist_door_parent.children.length > 0){
                 let DoorIcon = document.createElement("div")
                 let door_visible = false
                 root.appendChild(DoorIcon)
-                this.pos(DoorIcon,8,52)
+                iconPos(DoorIcon)
                 DoorIcon.style.color = "white"
                 DoorIcon.innerText = "[门]"
                 DoorIcon.style.userSelect = "none"
@@ -847,7 +987,7 @@ class RoomDrawer{
                     not_exist_door_parent.style.display = door_visible ? "" : "none"
                     DoorIcon.style.color = door_visible ? "green" : "white"
                 }    
-            }    
+            }
         }
 
         //draw text
@@ -856,6 +996,7 @@ class RoomDrawer{
         textDiv.style.fontSize = "16px"
         textDiv.style.color = "white"
         textDiv.style.marginLeft = "10px"
+        textDiv.style.zIndex = "80001"
         root.appendChild(textDiv)
         this.pos(textDiv, 28,16)
         let displayText = (text:string, marginLeft:number, marginRight:number, click_copy:boolean)=>{
@@ -890,7 +1031,13 @@ class RoomDrawer{
         displayText("难度:",10,0,false)
         displayText(this.roomJson.difficulty.toString(),0,0,false)
 
-        displayText("type=" + this.roomJson.type + ",shape=" + this.roomJson.shape, 10,0,false)
+        displayText("权重:", 10,0,false)
+        displayText(this.roomJson.weight.toString(), 0,0,false)
+
+
+        if(verbose){
+            displayText("type=" + this.roomJson.type + ",shape=" + this.roomJson.shape, 10,0,false)
+        }
 
         this.floatWindow = document.createElement("div")
         root.appendChild(this.floatWindow)
@@ -934,6 +1081,7 @@ class RoomDrawer{
             mask.style.textAlign = "center"
             mask.style.overflow = "hidden"
             mask.innerHTML = '<i class="fa fa-expand" style="height:50%;font-size:200px;transform:translateY(100%) translateY(-100px)" aria-hidden="true"></i>'
+            mask.style.zIndex = "90000"
             mask.onclick = ()=>{
                 RoomDrawer.activatingDrawer = this
                 this.rootContainer.removeChild(this.rootDiv)
@@ -958,6 +1106,7 @@ class RoomDrawer{
             UnclickIcon.innerHTML = '<i class="fa fa-compress" aria-hidden="true"></i>'
             UnclickIcon.style.userSelect = "none"
             UnclickIcon.style.cursor = "pointer"
+            UnclickIcon.style.zIndex = "80000"
             let pendingClick = false
             this.unclickFunction = ()=>{
                 if(pendingClick)

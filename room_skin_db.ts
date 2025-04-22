@@ -335,7 +335,6 @@ class RoomSkin {
     ]
 
     getBackgroundUrl(roomJson: RoomData): { file: string, transform?: string } {
-
         if (roomJson.type == 24) {
             if (roomJson.shape == 1)
                 return { file: "Anm2_resources-dlc3_gfx_backdrop_planetarium.png", transform: "scale(2) translate(84px, 46px)" }
@@ -374,6 +373,9 @@ class RoomSkin {
     }
 
     getBackgroundSpriteUrl(roomJson: RoomData) {
+        if(roomJson.type == EnumRoomType.ROOM_MINIBOSS && roomJson.variant >= 2301 && roomJson.variant < 2310){
+            return "Anm2_resources_gfx_backdrop_09_sheol.png"
+        }
         switch (roomJson.type) {
             case EnumRoomType.ROOM_LIBRARY:
                 return "Anm2_resources_gfx_backdrop_0a_library.png"
@@ -425,6 +427,9 @@ class RoomSkin {
     }
 
     getDoorUrl(roomJson: RoomData) {
+        if(roomJson.type == EnumRoomType.ROOM_MINIBOSS && roomJson.variant >= 2301 && roomJson.variant < 2310){
+            return 'Anm2_resources_gfx_grid_door_07_devilroomdoor.png'
+        }
         switch (roomJson.type) {
             case EnumRoomType.ROOM_PLANETARIUM:
                 return "Anm2_resources-dlc3_gfx_grid_door_00x_planetariumdoor.png"
