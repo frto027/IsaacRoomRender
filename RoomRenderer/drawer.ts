@@ -1148,52 +1148,57 @@ class RoomDrawer{
 }
 
 
-let divs = document.getElementsByClassName("room-renderer")
-if(divs.length > 0){
-    let huijiJsonDatabase = new HuijiJsonDatabase()
-    let imageUrlDatabase = new EntityImageDatabase()
+let huijiJsonDatabase = new HuijiJsonDatabase()
+let imageUrlDatabase = new EntityImageDatabase()
 
-    let pendingDivs = []
-    for(let i=0;i<divs.length;i++){
-        let div = divs[i] as HTMLElement
-        
-        let roomJsonPath = div.getAttribute("data-path")
-        if(roomJsonPath == undefined){
-            continue
-        }
-        if(!roomJsonPath.startsWith("Data:"))
-        {
-            roomJsonPath = "Data:" + roomJsonPath
-            div.setAttribute("data-path", roomJsonPath)
-        }
-        huijiJsonDatabase.addRequestJson(roomJsonPath)
-        pendingDivs.push(div)
-    }
-
-    huijiJsonDatabase.sendRequest(()=>{
-        let roomDrawers:RoomDrawer[] = []
-
-        pendingDivs.forEach(div=>{
-            let roomJsonPath = div.getAttribute("data-path")
-            // let scale = +(div.getAttribute("data-scale") || "1")
-            // if(isNaN(scale))
-            //     scale = 1
-            // if(scale <= 0)
-            //     scale = 1
-            let roomJson = huijiJsonDatabase.db.get(roomJsonPath)
-            if(roomJson == undefined)
-            {
-                console.log("not found room json ", roomJsonPath)
-                return
-            }
+function renderElements(divs:HTMLCollectionOf<Element>){
+    if(divs.length > 0){
+        let pendingDivs = []
+        for(let i=0;i<divs.length;i++){
+            let div = divs[i] as HTMLElement
             
-            let drawer = new RoomDrawer(imageUrlDatabase, div, roomJson)
-            roomDrawers.push(drawer)
-
+            let roomJsonPath = div.getAttribute("data-path")
+            if(roomJsonPath == undefined){
+                continue
+            }
+            if(!roomJsonPath.startsWith("Data:"))
+            {
+                roomJsonPath = "Data:" + roomJsonPath
+                div.setAttribute("data-path", roomJsonPath)
+            }
+            huijiJsonDatabase.addRequestJson(roomJsonPath)
+            pendingDivs.push(div)
+        }
+    
+        huijiJsonDatabase.sendRequest(()=>{
+            let roomDrawers:RoomDrawer[] = []
+    
+            pendingDivs.forEach(div=>{
+                let roomJsonPath = div.getAttribute("data-path")
+                // let scale = +(div.getAttribute("data-scale") || "1")
+                // if(isNaN(scale))
+                //     scale = 1
+                // if(scale <= 0)
+                //     scale = 1
+                let roomJson = huijiJsonDatabase.db.get(roomJsonPath)
+                if(roomJson == undefined)
+                {
+                    console.log("not found room json ", roomJsonPath)
+                    return
+                }
+                
+                let drawer = new RoomDrawer(imageUrlDatabase, div, roomJson)
+                roomDrawers.push(drawer)
+    
+            })
+    
+            imageUrlDatabase.sendUrlObtainRequest(()=>{
+                roomDrawers.forEach(d=>d.startLoadImage())
+            })
         })
-
-        imageUrlDatabase.sendUrlObtainRequest(()=>{
-            roomDrawers.forEach(d=>d.startLoadImage())
-        })
-    })
+    }
 }
+
+renderElements(document.getElementsByClassName("room-renderer"));
+
+(window as any).renderRooms = renderElements;
