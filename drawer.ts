@@ -978,6 +978,29 @@ class RoomDrawer{
             }
 
             {
+                let TemplateIcon = document.createElement("a")
+                root.appendChild(TemplateIcon)
+                iconPos(TemplateIcon)
+                TemplateIcon.style.color = "white"
+                TemplateIcon.innerText = "[标]"
+                TemplateIcon.style.userSelect = "none"
+                TemplateIcon.style.cursor = "pointer"
+                TemplateIcon.onclick = ()=>{
+                    let txt = `{{布局图标|${this.roomJson._id}}}`
+                    let hint = ""
+                    try{
+                        navigator.clipboard.writeText(txt).then(function(){
+                            (window as any).$message.success('wiki模板已复制：' + txt + hint,{duration:2000,keepAliveOnHover:true})}
+                        ).catch(function(e){
+                            (window as any).$message.error('以下内容复制失败：' + txt + hint);console.error(e)
+                        })
+                    }catch(e){
+                        (window as any).$message.error('以下内容复制失败：' + txt + hint);console.error(e)
+                    }
+                }
+            }
+
+            {
                 let SourceIcon = document.createElement("a")
                 root.appendChild(SourceIcon)
                 iconPos(SourceIcon)
