@@ -25,6 +25,8 @@ class EntityDatabaseItem{
     page:string | undefined
     func:ItemFunctionRenderer | undefined
 
+    already_requested = false
+
     entityTabx:EntityTabxItem|undefined
 
     constructor(type:number, variant:number, subtype:number){
@@ -77,6 +79,11 @@ class HuijiJsonDatabase{
             }
         });
         
+        if(filter["_id"]["$in"].length == 0){
+            done()
+            return
+        }
+
         (window as any).$.ajax({
             url: "/api/rest_v1/namespace/data",
             method: "GET",
@@ -121,7 +128,7 @@ class HuijiJsonDatabase{
 class EntityImageDatabase{
     db = new Map<string, EntityDatabaseItem>()
 
-    drawers = new Set<RoomDrawer>()
+    //drawers = new Set<RoomDrawer>()
 
     constructor(){
         for(let ent_id in PreloadedDatabase){
@@ -146,10 +153,13 @@ class EntityImageDatabase{
     sendUrlObtainRequest(done:()=>void){
         var filter:any = { "$or": [] }
         
+        var requesting_items:EntityDatabaseItem[] = []
         //由于数据库接口不能接受过长数据（可能是get请求的url限制），我们对?.0.0以及a.?.c的数据进行合并同类项，以构造更短的请求
         var x_0_0_items = []
         var a_x_c_items = new Map<string, number[]>()
         this.db.forEach((v,k,m)=>{
+            if(v.already_requested)
+                return
             if(v.image_url == undefined || v.entityTabx == undefined){
                 if(v.variant == 0 && v.subtype == 0){
                     x_0_0_items.push(v.type)
@@ -159,6 +169,7 @@ class EntityImageDatabase{
                         a_x_c_items.set(a_c, [])
                     a_x_c_items.get(a_c).push(v.variant)
                 }
+                requesting_items.push(v)
             }
         });
         if(x_0_0_items.length > 0){
@@ -190,7 +201,7 @@ class EntityImageDatabase{
             done()
             return
         }
-        
+
         (window as any).$.ajax({
             url: "/api/rest_v1/namespace/data",
             method: "GET",
@@ -225,6 +236,9 @@ class EntityImageDatabase{
                 }
             }
 
+            for(let i=0;i<requesting_items.length;i++){
+                requesting_items[i].already_requested = true
+            }
             done();
         }).fail(function (jqXHR:any, textStatus:any) {
             (window as any).$notification.error({content:"房间布局零件：实体数据加载失败（常见可能原因：当前页面内房间布局数量过多）"})
@@ -265,8 +279,10 @@ class RoomDrawer{
     static activatingDrawer:RoomDrawer|undefined
 
     constructor(database:EntityImageDatabase, root:HTMLElement, roomJson:RoomData){
-        this.rootContainer = root
-        this.roomJson = roomJson
+        this.rootContainer = root;
+        this.roomJson = roomJson;
+
+        (root as any).roomDrawer = this;
 
         if(root.hasAttribute("data-scale")){
             this.scale = +root.getAttribute("data-scale")
@@ -292,7 +308,7 @@ class RoomDrawer{
 
         this.database = database
     
-        database.drawers.add(this)
+        //database.drawers.add(this)
 
         //entities
         roomJson.spawns.forEach(v=>{
@@ -324,7 +340,7 @@ class RoomDrawer{
     }
 
     destroy(){
-        this.database.drawers.delete(this)
+        //this.database.drawers.delete(this)
     }
 
     trySolveDoors(){
@@ -1047,29 +1063,6 @@ class RoomDrawer{
 
 
         if(this.click_mode){
-            if(RoomDrawer.documentFloatOverlay == undefined){
-                RoomDrawer.documentFloatOverlay = document.createElement("div")
-                RoomDrawer.documentFloatOverlay.style.display = "none"
-                RoomDrawer.documentFloatOverlay.style.position = "fixed"
-                RoomDrawer.documentFloatOverlay.style.top = "0"
-                RoomDrawer.documentFloatOverlay.style.left = "0"
-                RoomDrawer.documentFloatOverlay.style.right = "0"
-                RoomDrawer.documentFloatOverlay.style.bottom = "0"
-                RoomDrawer.documentFloatOverlay.style.zIndex = "1000000"
-                RoomDrawer.documentFloatOverlay.style.background = "#000000bd"
-                RoomDrawer.documentFloatOverlay.style.textAlign = "center"
-                RoomDrawer.documentFloatOverlay.style.overflow = "auto"
-                RoomDrawer.documentFloatOverlay.style.opacity = "0"
-                RoomDrawer.documentFloatOverlay.style.transition = "opacity 0.2s"
-                RoomDrawer.documentFloatOverlay.onclick = (evt)=>{
-                    if(evt.target == RoomDrawer.documentFloatOverlay){
-                        if(RoomDrawer.activatingDrawer?.unclickFunction){
-                            RoomDrawer.activatingDrawer?.unclickFunction()
-                        }
-                    }
-                }
-                document.body.appendChild(RoomDrawer.documentFloatOverlay)    
-            }
 
             let mask = document.createElement("div")
             this.click_mask = mask
@@ -1147,6 +1140,27 @@ class RoomDrawer{
     }
 }
 
+RoomDrawer.documentFloatOverlay = document.createElement("div")
+RoomDrawer.documentFloatOverlay.style.display = "none"
+RoomDrawer.documentFloatOverlay.style.position = "fixed"
+RoomDrawer.documentFloatOverlay.style.top = "0"
+RoomDrawer.documentFloatOverlay.style.left = "0"
+RoomDrawer.documentFloatOverlay.style.right = "0"
+RoomDrawer.documentFloatOverlay.style.bottom = "0"
+RoomDrawer.documentFloatOverlay.style.zIndex = "1000000"
+RoomDrawer.documentFloatOverlay.style.background = "#000000bd"
+RoomDrawer.documentFloatOverlay.style.textAlign = "center"
+RoomDrawer.documentFloatOverlay.style.overflow = "auto"
+RoomDrawer.documentFloatOverlay.style.opacity = "0"
+RoomDrawer.documentFloatOverlay.style.transition = "opacity 0.2s"
+RoomDrawer.documentFloatOverlay.onclick = function(evt){
+    if(evt.target == RoomDrawer.documentFloatOverlay){
+        if(RoomDrawer.activatingDrawer?.unclickFunction){
+            RoomDrawer.activatingDrawer?.unclickFunction()
+        }
+    }
+}
+document.body.appendChild(RoomDrawer.documentFloatOverlay)    
 
 let huijiJsonDatabase = new HuijiJsonDatabase()
 let imageUrlDatabase = new EntityImageDatabase()
