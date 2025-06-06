@@ -982,7 +982,7 @@ class RoomDrawer{
                 root.appendChild(TemplateIcon)
                 iconPos(TemplateIcon)
                 TemplateIcon.style.color = "white"
-                TemplateIcon.innerText = "[标]"
+                TemplateIcon.innerText = "[模]"
                 TemplateIcon.style.userSelect = "none"
                 TemplateIcon.style.cursor = "pointer"
                 TemplateIcon.onclick = ()=>{
@@ -1048,14 +1048,34 @@ class RoomDrawer{
         }
 
         const stage_name = StageNames[this.roomJson._file]
+
+        if(this.roomJson._file.indexOf("greed") >= 0){
+            displayText("贪婪模式",5,5,false)
+        }
+
         if(stage_name){
             displayText(stage_name, 5,5,false)
         }
 
-        const gotoCommandFirstPart = RoomGoToCommand[this.roomJson.type]
-        if(gotoCommandFirstPart){
-            const gotoCommand = "goto " + gotoCommandFirstPart + "." + this.roomJson.variant
-            displayText(gotoCommand, 5, 5, true)
+
+        if(this.roomJson.type == EnumRoomType.ROOM_CHALLENGE){
+            if(this.roomJson._file.indexOf("special rooms") >= 0){
+                displayText("挑战(" + this.roomJson.variant + ")",5,5,true)
+            }else{
+                displayText("楼层专属挑战(" + this.roomJson.variant + ")",5,5,true)
+            }
+        }else{
+            let gotoCommandFirstPart = RoomGoToCommand[this.roomJson.type]
+            if(gotoCommandFirstPart){
+                if(this.roomJson._file.indexOf("special rooms") >= 0){
+                    //this is special rooms
+                }else if(this.roomJson.type != EnumRoomType.ROOM_DEFAULT && this.roomJson.type != EnumRoomType.ROOM_NULL && gotoCommandFirstPart.startsWith("s.")){
+                    gotoCommandFirstPart = "x." + gotoCommandFirstPart.substring(2)
+                }
+    
+                const gotoCommand = "goto " + gotoCommandFirstPart + "." + this.roomJson.variant
+                displayText(gotoCommand, 5, 5, true)
+            }    
         }
 
         displayText("房间名：", 10, 0, false)
@@ -1188,7 +1208,7 @@ document.body.appendChild(RoomDrawer.documentFloatOverlay)
 let huijiJsonDatabase = new HuijiJsonDatabase()
 let imageUrlDatabase = new EntityImageDatabase()
 
-function renderElements(divs:HTMLCollectionOf<Element>){
+function renderElements(divs:ArrayLike<Element>){
     if(divs.length > 0){
         let pendingDivs = []
         for(let i=0;i<divs.length;i++){
@@ -1239,3 +1259,46 @@ function renderElements(divs:HTMLCollectionOf<Element>){
 renderElements(document.getElementsByClassName("room-renderer"));
 
 (window as any).renderRooms = renderElements;
+
+
+/////////////////// for Data:xxx.json preview ////////////////////
+function initJsonPage(path) {
+    let infocard = document.createElement("div");
+    (infocard as any).style = "border:1px solid white;border-radius:8px;padding:10px"
+    infocard.innerHTML = "<h4>房间布局文件</h4>" +
+        '<div class="input-group">' +
+        '<span class="input-group-addon" id="basic-addon1">文件路径：</span>' +
+        '<input type="text" id="room-previewcard-title" class="form-control" readonly>' +
+        '</div>' +
+        "<div style='margin:10px 0 10px 0' id='room-previewcard-buttons'><button id='room-previewcard-displayjson' class='btn btn-primary'>显示原始JSON</button><button id='room-preview-card-load-room' class='btn btn-success' style='margin-left:10px'>预览布局</button></div>"
+    ;
+    (infocard.querySelector('#room-previewcard-title') as any).value = path
+
+    let wiki_content = (window as any).$('#mw-content-text')[0]
+    let json_table = wiki_content.querySelector('.mw-jsonconfig');
+    (window as any).$(json_table).hide();
+
+    wiki_content.appendChild(infocard);
+
+    (infocard.querySelector('#room-previewcard-displayjson') as any).onclick = function () {
+        infocard.remove();
+        (window as any).$(json_table).show()
+    };
+
+    (infocard.querySelector('#room-preview-card-load-room') as any).onclick = function () {
+        infocard.querySelector('#room-previewcard-buttons').remove()
+        infocard.appendChild(document.createElement('hr'))
+
+        let preview_root_div = document.createElement("div")
+        preview_root_div.setAttribute("data-path", path)
+        infocard.appendChild(preview_root_div)
+        renderElements([preview_root_div])
+    }
+}
+
+
+let pageName = (window as any).mw.config.get("wgPageName")
+if (pageName && pageName.startsWith("Data:Rooms/") && pageName.endsWith(".json")) {
+    verbose = true;
+    initJsonPage(pageName)
+}
