@@ -1049,7 +1049,9 @@ class RoomDrawer{
 
         const stage_name = StageNames[this.roomJson._file]
 
-        if(this.roomJson._file.indexOf("greed") >= 0){
+        let is_greed = this.roomJson._file.indexOf("greed") >= 0
+
+        if(is_greed){
             displayText("贪婪模式",5,5,false)
         }
 
@@ -1060,10 +1062,12 @@ class RoomDrawer{
 
         if(this.roomJson.type == EnumRoomType.ROOM_CHALLENGE){
             if(this.roomJson._file.indexOf("special rooms") >= 0){
-                displayText("挑战(" + this.roomJson.variant + ")",5,5,true)
+                displayText("挑战(" + this.roomJson.variant + ")",5,5,false)
             }else{
-                displayText("楼层专属挑战(" + this.roomJson.variant + ")",5,5,true)
+                displayText("楼层专属挑战(" + this.roomJson.variant + ")",5,5,false)
             }
+        }else if(this.roomJson.type == EnumRoomType.ROOM_BOSS && is_greed && this.roomJson.shape == EnumRoomShape.ROOMSHAPE_1x2){
+            displayText("贪婪Boss(" + this.roomJson.variant + ")",5,5,false)
         }else{
             let gotoCommandFirstPart = RoomGoToCommand[this.roomJson.type]
             if(gotoCommandFirstPart){

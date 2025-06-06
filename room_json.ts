@@ -107,7 +107,7 @@ const RoomGoToCommand : {[type:number]:string} = {
     [EnumRoomType.ROOM_CHEST]        : 's.chest',
     [EnumRoomType.ROOM_DICE]         : 's.dice',
     [EnumRoomType.ROOM_BLACK_MARKET] : 's.blackmarket',
-    [EnumRoomType.ROOM_GREED_EXIT]   : '????',
+    [EnumRoomType.ROOM_GREED_EXIT]   : 's.greedexit',
     
     [EnumRoomType.ROOM_PLANETARIUM]  : "s.planetarium",
     [EnumRoomType.ROOM_SECRET_EXIT]  : "s.secretexit",
