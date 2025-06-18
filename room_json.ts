@@ -146,7 +146,7 @@ const StageNames = {
 	["33.corpse.stb"]: 						"尸宫",
 	["34.mortis.stb"]: 						"mortis",
 	["35.home.stb"]: 						"家",
-	["36.backwards.stb"]: 					"backwards",
+	["36.backwards.stb"]: 					"回溯",
 	["greed/00.special rooms.stb"]: 		"特殊",
 	["greed/01.basement.stb"]: 				"地下室",
 	["greed/02.cellar.stb"]: 				"地窖",
