@@ -1274,7 +1274,7 @@ function initJsonPage(path) {
         '<span class="input-group-addon" id="basic-addon1">文件路径：</span>' +
         '<input type="text" id="room-previewcard-title" class="form-control" readonly>' +
         '</div>' +
-        "<div style='margin:10px 0 10px 0' id='room-previewcard-buttons'><button id='room-previewcard-displayjson' class='btn btn-primary' style='margin-top:10px'>显示原始JSON</button><button id='room-preview-card-load-room' class='btn btn-success' style='margin-left:10px;margin-top:10px'>预览布局</button><a id='huiji-json' target='_blank' class='btn btn-success' style='margin-left:10px;margin-top:10px'>灰机JSON编辑器</a></div>"
+        "<div style='margin:10px 0 10px 0' id='room-previewcard-buttons'><button id='room-previewcard-displayjson' class='btn btn-primary' style='margin-top:10px'>显示原始JSON</button><button id='room-preview-card-load-room' class='btn btn-success' style='margin-left:10px;margin-top:10px'>预览布局</button><a id='huiji-json' class='btn btn-success' style='margin-left:10px;margin-top:10px'>灰机JSON编辑器</a></div>"
     ;
     (infocard.querySelector('#room-previewcard-title') as any).value = path;
     (infocard.querySelector("#huiji-json") as unknown as HTMLHyperlinkElementUtils).href = "/wiki/Data:Rooms.schema?target=" + (window as any).mw.config.get("wgPageName");
