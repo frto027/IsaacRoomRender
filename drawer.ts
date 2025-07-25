@@ -24,6 +24,7 @@ class EntityDatabaseItem{
     image_url:string | undefined
     page:string | undefined
     func:ItemFunctionRenderer | undefined
+    rawScale:number|undefined = undefined
 
     already_requested = false
 
@@ -40,7 +41,7 @@ class EntityDatabaseItem{
     }
 }
 
-function image(src:string, sizeW:number, sizeH:number|undefined = undefined):HTMLImageElement {
+function image(src:string, sizeW:number, sizeH:number|undefined = undefined, drawer_for_preview_record:RoomDrawer|undefined = undefined, rawScale:number|undefined = undefined):HTMLImageElement {
     let ret = new Image()
     ret.style.imageRendering = "pixelated"
     ret.onload = ()=>{
@@ -52,7 +53,21 @@ function image(src:string, sizeW:number, sizeH:number|undefined = undefined):HTM
         }
         if(scaleW > 2)
             scaleW = 2
-        ret.style.transform = "translate(-" + ret.width/2 + "px, -" + ret.height/2 + "px)" + "scale(" + scaleW + ") translate(" + ret.width/2 + "px, " + ret.height/2 + "px)"
+        const grid_transform = "translate(-" + ret.width/2 + "px, -" + ret.height/2 + "px)" + "scale(" + scaleW + ") translate(" + ret.width/2 + "px, " + ret.height/2 + "px)"
+        let preview_transform = grid_transform
+        if(rawScale != undefined)
+            preview_transform = "translate(-" + ret.width/2 + "px, -" + ret.height/2 + "px)" + "scale(" + rawScale + ") translate(" + sizeW/4 + "px, " + (-ret.height/2 + sizeW/2) + "px)"
+        if(drawer_for_preview_record){
+            ret.style.transform = drawer_for_preview_record.is_in_preview_mode ? preview_transform : grid_transform
+            drawer_for_preview_record.entity_preview_mode_datas.push([ret, preview_transform])
+            drawer_for_preview_record.entity_grid_mode_datas.push([ret, grid_transform])
+            setTimeout(()=>{
+                ret.style.transition = "all 0.2s"
+            },1000)
+        }else{
+            ret.style.transform = grid_transform
+        }
+        
         ret.onload = undefined
     }
     ret.src = src
@@ -233,6 +248,7 @@ class EntityImageDatabase{
                         // item.image_url = undefined
                     }
                     item.entityTabx = data
+                    item.rawScale = 2
                 }
             }
 
@@ -576,6 +592,23 @@ class RoomDrawer{
 
     unclickFunction:()=>void
 
+    is_in_preview_mode = true
+    entity_preview_mode_datas:Array<[HTMLElement, string]> = []
+    entity_grid_mode_datas:Array<[HTMLElement,string]> = []
+
+    toPreviewMode(){
+        this.is_in_preview_mode = true
+        for(let d of this.entity_preview_mode_datas){
+            d[0].style.transform = d[1]
+        }
+    }
+    toGridMode(){
+        this.is_in_preview_mode = false
+        for(let d of this.entity_grid_mode_datas){
+            d[0].style.transform = d[1]
+        }
+    }
+
     render(){
         let margin = this.margin
         this.rootContainer.innerHTML = ""
@@ -853,7 +886,7 @@ class RoomDrawer{
 
                 if(f == undefined && img){
                     f = (t,v,s,size)=>{
-                        let ret:HTMLElement = image(img, size)
+                        let ret:HTMLElement = image(img, size, undefined, entity.length == 1 ? this : undefined, dbItem?.rawScale)
                         // highlight_elems.push(ret)
                         if(page && !this.no_operate_mode){
                             let a = document.createElement("a")
@@ -975,6 +1008,11 @@ class RoomDrawer{
                 grid_parent_visible = !grid_parent_visible
                 grid_parent.style.display = grid_parent_visible ? "" : "none"
                 GIcon.style.color = grid_parent_visible ? "green" : "white"
+                if(this.is_in_preview_mode){
+                    this.toGridMode()
+                }else{
+                    this.toPreviewMode()
+                }
             }
 
             {
