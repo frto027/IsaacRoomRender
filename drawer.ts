@@ -57,7 +57,7 @@ function image(src:string, sizeW:number, sizeH:number|undefined = undefined, dra
         let preview_transform = grid_transform
         if(rawScale != undefined)
             preview_transform = "translate(-" + ret.width/2 + "px, -" + ret.height/2 + "px)" + "scale(" + rawScale + ") translate(" + sizeW/4 + "px, " + (-ret.height/2 + sizeW/2) + "px)"
-        if(drawer_for_preview_record){
+        if(drawer_for_preview_record && (ret.width / ret.height) < 1.7 /* 虫子别来凑热闹 */){
             ret.style.transform = drawer_for_preview_record.is_in_preview_mode ? preview_transform : grid_transform
             drawer_for_preview_record.entity_preview_mode_datas.push([ret, preview_transform])
             drawer_for_preview_record.entity_grid_mode_datas.push([ret, grid_transform])
