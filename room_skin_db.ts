@@ -317,6 +317,36 @@ class RoomSkin {
         "36.backwards.stb": "01_basement.png"
     }
 
+    static pits = {
+        __proto__:null,
+        "01.basement.stb": "grid_pit.png", "02.cellar.stb": "grid_pit.png",
+        "03.burning basement.stb": "grid_pit.png",
+        "04.caves.stb": "grid_pit.png",
+
+        "05.catacombs.stb": "grid_pit_catacombs.png",
+        "06.flooded caves.stb": "grid_pit_cathedral.png", "07.depths.stb": "grid_pit_depths.png",
+        "08.necropolis.stb": "grid_pit_necropolis.png", "09.dank depths.stb": "grid_pit_dankdepths.png",
+        "10.womb.stb": "grid_pit_womb.png", "11.utero.stb": "grid_pit_utero.png",
+        "12.scarred womb.stb": "grid_pit_blood_scarredwomb.png", "13.blue womb.stb":
+            "grid_pit_bluewomb.png", "14.sheol.stb": "grid_pit_depths.png", "15.cathedral.stb": "grid_pit_cathedral.png",
+        "16.dark room.stb": "grid_pit_darkroom.png", "17.chest.stb": "grid_pit.png",
+        //"24.the shop.stb": "0b_shop.png", "25.ultra greed.stb": "0b_shop.png",
+        "27.downpour.stb": "grid_pit_downpour.png", "28.dross.stb": "grid_pit_dross.png",
+        "29.mines.stb": "grid_pit_mines.png", "30.ashpit.stb": "grid_pit_ashpit.png",
+        "31.mausoleum.stb": "grid_pit_mausoleum.png", "32.gehenna.stb": "grid_pit_gehenna.png",
+        "33.corpse.stb": "grid_pit_corpse.png", //"35.home.stb": "0fx_hallway.png",
+        //"36.backwards.stb": "01_basement.png"
+
+    }
+
+    static dlc3_pits = [
+        "27.downpour.stb","28.dross.stb","30.ashpit.stb",
+        "29.mines.stb",
+        "31.mausoleum.stb",
+        "32.gehenna.stb", "33.corpse.stb",
+        "35.home.stb",
+        "13.blue womb.stb"
+    ]
 
     static dlc3_stbs = [
         "27.downpour.stb","28.dross.stb","30.ashpit.stb",
@@ -475,5 +505,20 @@ class RoomSkin {
             return "Anm2_resources_gfx_grid_" + RoomSkin.doors[index]
         }
         return "Anm2_resources_gfx_grid_door_01_normaldoor.png"
+    }
+
+    getPitUrl(roomJson:RoomData){
+        let index = roomJson._file.toLowerCase()
+        let split = index.indexOf("/")
+        if (split >= 0)
+            index = index.substring(split + 1)
+
+        if(RoomSkin.pits[index]){
+            if (RoomSkin.dlc3_pits.indexOf(index) >= 0) {
+                return "Anm2_resources-dlc3_gfx_grid_" + RoomSkin.pits[index]
+            }
+            return "Anm2_resources_gfx_grid_" + RoomSkin.pits[index]
+        }
+        return "Anm2_resources_gfx_grid_grid_pit.png"
     }
 }

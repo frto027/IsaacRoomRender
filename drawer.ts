@@ -262,6 +262,142 @@ class EntityImageDatabase{
         })
     }
 }
+
+class PitDrawer{
+    roomW:number
+    roomH:number
+
+    drawer:RoomDrawer
+    hasAnyPit = false
+
+    pitMatrix:boolean[]
+
+    // pitKnowledge描述了pit.png上每一个方块的开口信息
+    // 0 1 2 3
+    // 4 5 6 7
+    // 8 9 10 11
+    // ...
+    // content: U R D L _ UR RD DL LU, 1 means floor, 0 means pit, 2 means any
+    static pitKnowledge:number[] = [
+        0x1011_2222,0x1101_2222,0x1110_2222,0x0111_2222,
+        0x1010_2222,0x0101_2222,0x1001_2022,0x1100_2202,
+        0x0110_2220,0x0011_0222,0x1000_2002,0x0100_2220,
+        0x1111_2222,0x1111_2222,0x0001_0222,0x0000_2222,
+        0x0010_0220,0x0000_2222,0x0000_2222,0x0110_2221,
+        0x0011_1222,0x1001_2122,0x1100_2212,0x0000_2222,
+        0x0000_2222,0x0001_1222,0x0100_2221,0x0010_1220,
+        0x0010_0221,0x0010_1221,0x1000_2102,0x1000_2012,
+        0x1000_2112
+    ]
+
+    // 0000 1000 0001 1001 0110
+    constructor(roomDrawer:RoomDrawer){
+        this.roomW = roomDrawer.roomJson.width
+        this.roomH = roomDrawer.roomJson.height
+        this.pitMatrix = new Array(this.roomW * this.roomH)
+        this.drawer = roomDrawer
+    }
+
+    pitIndex(x:number, y:number){
+        return x + y * this.roomW
+    }
+
+    isPitEntity(type:number,variant:number,subtype:number){
+        return type == 3000 && variant == 0 && subtype == 0
+    }
+
+    markPit(x:number, y:number, ent:EntityListItem){
+        this.hasAnyPit = true
+        this.pitMatrix[this.pitIndex(x,y)] = true
+    }
+
+    getPitFeature(x:number, y:number){
+        if(x < 0 || x >= this.roomW || y < 0 || y >= this.roomH){
+            return 1
+        }
+        if(this.pitMatrix[this.pitIndex(x,y)]){
+            return 0
+        }
+        return 1
+    }
+
+    selectImageForFeature(feature:number){
+        //全1的沟壑有两个，随机给一个
+        if((feature & 0xFFFF0000 )== 0x11110000){
+            //12 or 13
+            return Math.random() > 0.5 ? 12 : 13
+        }
+        //全0的沟壑规则不是互斥的，所以独立判断
+        if((feature & 0xFFFF0000) == 0x00000000){
+            switch(feature){
+                case 0x0001:
+                    return 17
+                case 0x1000:
+                    return 18
+                case 0x1001:
+                    return 23
+                case 0x0110:
+                    return 24
+                default:
+                    return 15
+            }
+        }
+        //剩下的规则可以保证互斥唯一
+        for(let i=0;i<PitDrawer.pitKnowledge.length;i++){
+            let kn = PitDrawer.pitKnowledge[i]
+            if((feature & 0xFFFF0000) != (kn & 0xFFFF0000)){
+                continue
+            }
+            if((kn & 0xF000) != 0x2000 && (feature & 0xF000) != (kn & 0xF000))
+                continue
+            if((kn & 0xF00) != 0x200 && (feature & 0xF00) != (kn & 0xF00))
+                continue
+            if((kn & 0xF0) != 0x20 && (feature & 0xF0) != (kn & 0xF0))
+                continue
+            if((kn & 0xF) != 0x2 && (feature & 0xF) != (kn & 0xF))
+                continue
+            return i
+        }
+        return 0
+    }
+    drawPits(root:HTMLElement){
+        if(!this.hasAnyPit)
+            return
+        let imgUrl = huijiImageUrl(this.drawer.skin.getPitUrl(this.drawer.roomJson))
+
+        for(let x = 0;x < this.roomW;x++){
+            for(let y=0;y<this.roomH;y++){
+                if(!this.pitMatrix[this.pitIndex(x,y)])
+                    continue
+                let feature = this.getPitFeature(x,y-1)
+                feature = feature * 0x10 + this.getPitFeature(x+1,y)
+                feature = feature * 0x10 + this.getPitFeature(x,y+1)
+                feature = feature * 0x10 + this.getPitFeature(x-1,y)
+
+                feature = feature * 0x10 + this.getPitFeature(x+1,y-1)
+                feature = feature * 0x10 + this.getPitFeature(x+1,y+1)
+                feature = feature * 0x10 + this.getPitFeature(x-1,y+1)
+                feature = feature * 0x10 + this.getPitFeature(x-1,y-1)
+                let selected_pit_index = this.selectImageForFeature(feature)
+                let img = document.createElement("div")
+                img.style.imageRendering = "pixelated"
+                img.style.width = "26px"
+                img.style.height = "26px"
+                let tx = (selected_pit_index % 4) * 26
+                let ty = Math.floor(selected_pit_index / 4) * 26
+                img.style.backgroundPositionX = -tx + "px"
+                img.style.backgroundPositionY = -ty + "px"
+                img.style.transform = "translate(-13px,-13px) scale(2) translate(26px,26px) translate(" + (x*26) + "px," + (y*26) + "px)"
+                img.style.backgroundImage = "url(" + imgUrl + ")"
+                img.style.position = "absolute"
+                // img.setAttribute("selected-index", feature.toString(16) +"")
+                root.appendChild(img)
+            }
+        }
+    }
+    
+}
+
 class RoomDrawer{
 
     rootContainer:HTMLElement;
@@ -723,6 +859,7 @@ class RoomDrawer{
             
         }
         
+        const pitDrawer = new PitDrawer(this)
 
         //draw entity
         for(let {x,y,entity} of this.roomJson.spawns){
@@ -742,6 +879,10 @@ class RoomDrawer{
 
             // let highlight_elems : HTMLElement[] = []
             for(let ent of entity){
+                if(pitDrawer.isPitEntity(ent.type, ent.variant, ent.subtype)){
+                    pitDrawer.markPit(x,y,ent)
+                    continue
+                }
                 const ent_id_str = ent.type + "." + ent.variant + "." + ent.subtype
                 let dbItem = this.database.db.get(ent_id_str)
                 const img = dbItem?.image_url
@@ -941,6 +1082,8 @@ class RoomDrawer{
                 subIndex += 1
             }
         }
+
+        pitDrawer.drawPits(root)
 
         //draw grid
         let grid_parent = document.createElement("div")
