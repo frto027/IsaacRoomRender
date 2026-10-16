@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "npx tsc && python merge.py"
+    "build": "npx tsc && python3 merge.py"
   },
   "author": "",
   "license": "ISC",

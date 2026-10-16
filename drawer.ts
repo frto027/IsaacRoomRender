@@ -1,7 +1,7 @@
 let verbose = window.location.href.indexOf("verbose=1") >= 0
 
 function huijiImageUrl(fileName:string){
-    if(fileName.indexOf("/")>= 0){
+    if(fileName == undefined || fileName == null || fileName.indexOf("/")>= 0){
         fileName = "InvalidFileName.png"
     }
     fileName = fileName.replace(new RegExp(" ", "g"),"_")
@@ -18,30 +18,14 @@ function huijiPageUrl(pageName:string){
 }
 
 class EntityDatabaseItem{
-    type:number
-    variant:number
-    subtype:number
-    image_url:string | undefined
-    page:string | undefined
-    func:ItemFunctionRenderer | undefined
-    rawScale:number|undefined = undefined
-
     already_requested = false
-
     entityTabx:EntityTabxItem|undefined
 
-    constructor(type:number, variant:number, subtype:number){
-        this.type = type
-        this.subtype = subtype
-        this.variant = variant
-    }
-
-    id(){
-        return this.type + "." + this.variant + "." + this.subtype
+    constructor(){
     }
 }
 
-function image(src:string, sizeW:number, sizeH:number|undefined = undefined, drawer_for_preview_record:RoomDrawer|undefined = undefined, rawScale:number|undefined = undefined):HTMLImageElement {
+function image(src:string, sizeW:number, sizeH:number|undefined = undefined, drawer_for_preview_record:RoomDrawer|undefined = undefined, rawScale:number|undefined = undefined, offsetX:number, offsetY:number):HTMLImageElement {
     let ret = new Image()
     ret.style.imageRendering = "pixelated"
     ret.onload = ()=>{
@@ -146,23 +130,11 @@ class EntityImageDatabase{
     //drawers = new Set<RoomDrawer>()
 
     constructor(){
-        for(let ent_id in PreloadedDatabase){
-            let ids = ent_id.split(".")
-            let e = new EntityDatabaseItem(+ids[0], +ids[1], +ids[2])
-            let file = PreloadedDatabase[ent_id].file
-            if(typeof(file) == "string"){
-                e.image_url = huijiImageUrl(file)
-            }else{
-                e.func = file
-            }
-            e.page = PreloadedDatabase[ent_id].page
-            this.db.set(e.id(), e)
-        }
     }
     requestEntity(type:number, variant:number, subtype:number){
         let str = type + "." + variant + "." + subtype
         if(!this.db.has(str))
-            this.db.set(str, new EntityDatabaseItem(type, variant, subtype))
+            this.db.set(str, new EntityDatabaseItem())
     }
 
     sendUrlObtainRequest(done:()=>void){
@@ -175,42 +147,18 @@ class EntityImageDatabase{
         this.db.forEach((v,k,m)=>{
             if(v.already_requested)
                 return
-            if(v.image_url == undefined || v.entityTabx == undefined){
-                if(v.variant == 0 && v.subtype == 0){
-                    x_0_0_items.push(v.type)
-                }else{
-                    let a_c = v.type + "_" + v.subtype
-                    if(!a_x_c_items.has(a_c))
-                        a_x_c_items.set(a_c, [])
-                    a_x_c_items.get(a_c).push(v.variant)
+            if(v.entityTabx == undefined){
+                if(k.endsWith(".0")){
+                    filter["$or"].push({
+                        ent_id: k.substring(0,k.length-2)
+                    })
                 }
+                filter["$or"].push({
+                    ent_id: k
+                })
                 requesting_items.push(v)
             }
         });
-        if(x_0_0_items.length > 0){
-            filter["$or"].push({
-                "Type":{"$in":x_0_0_items},
-                "Variant":0,
-                "Subtype":0
-            })
-        }
-        a_x_c_items.forEach((v,k)=>{
-            let split = k.split("_")
-            let type = +split[0]
-            let subtype = +split[1]
-            let query:any = {
-                "Type":type,
-                "Subtype":subtype,
-                "Variant":v[0]
-            }
-            if(v.length > 1){
-                query["Variant"] = {"$in":[]}
-                v.forEach(n=>{
-                    query["Variant"]["$in"].push(n)
-                })
-            }
-            filter["$or"].push(query)
-        })
         
         if(filter["$or"].length == 0){
             done()
@@ -223,7 +171,7 @@ class EntityImageDatabase{
             data: { filter: JSON.stringify({
                 "$and":[
                     {
-                        "_id":{"$regex":"^Data:Entity\\.tabx"}
+                        "_id":{"$regex":"^Data:EntityForRoomRender\\.tabx"}
                     },
                     filter
                 ]
@@ -232,23 +180,11 @@ class EntityImageDatabase{
         }).done((msg:any)=> {
             for (var i = 0; i < msg._embedded.length; i++) {
                 var data = msg._embedded[i] as EntityTabxItem
-                //FIXME: fix query
-                var type = data.Type
-                var variant = data.Variant
-                var subtype = data.Subtype
-
-                var str = type + "." + variant + "." + subtype
-                let item = this.db.get(str)
+                if(!(new RegExp("^[0-9\\.]+$").exec(data.ent_id || "")))
+                    return;
+                let item = this.db.get(data.ent_id)
                 if(item){
-                    let imgName = /*data.Icon ||*/ data.Image
-                    if(imgName != undefined && typeof(imgName) == "string"){
-                        item.image_url = item.image_url || huijiImageUrl(imgName)
-                        item.page = item.page || data.Page
-                    }else{
-                        // item.image_url = undefined
-                    }
                     item.entityTabx = data
-                    item.rawScale = 2
                 }
             }
 
@@ -642,23 +578,25 @@ class RoomDrawer{
 
                     let text = "权重:" + w_str + " ID:" + ent_id
                     let ent_data = this.database.db.get(ent_id)
-                    if(ent_data){
-                        let name = ent_data?.entityTabx?.NameZH
+                    let tabxdata = ent_data.entityTabx
+                    if(tabxdata){
+                        let name = tabxdata.display_name
                         if(name){
                             text += "(" + name + ")"
-                        }else if(ent_data.page){
-                            text += "(" + ent_data.page + ")"
+                        }else if(tabxdata.page){
+                            text += "(" + tabxdata.page + ")"
                         }
                     }
-                    if(ent_data.page != undefined){
+
+                    if(tabxdata?.page != undefined){
                         let a = document.createElement("a")
                         a.innerText = text
-                        a.href = huijiPageUrl(ent_data.page)
+                        a.href = huijiPageUrl(tabxdata?.page)
                         a.target = "_blank"
                         floatBody.appendChild(a)
                         floatBody.appendChild(document.createElement("br"))
                     }else{
-                        let a = document.createElement("ap")
+                        let a = document.createElement("a")
                         a.innerText = text
                         floatBody.appendChild(a)
                         floatBody.appendChild(document.createElement("br"))
@@ -669,23 +607,25 @@ class RoomDrawer{
                 let ent_id = v.type + "." + v.variant + "." + v.subtype
                 let text = "生成:" + ent_id
                 let ent_data = this.database.db.get(ent_id)
-                if(ent_data){
-                    let name = ent_data?.entityTabx?.NameZH
+                let tabxdata = ent_data.entityTabx
+                if(tabxdata){
+                    let name = tabxdata.display_name
                     if(name){
                         text += "(" + name + ")"
-                    }else if(ent_data.page){
-                        text += "(" + ent_data.page + ")"
+                    }else if(tabxdata.page){
+                        text += "(" + tabxdata.page + ")"
                     }
                 }
-                if(ent_data.page != undefined){
+
+                if(tabxdata?.page != undefined){
                     let a = document.createElement("a")
                     a.innerText = text
-                    a.href = huijiPageUrl(ent_data.page)
+                    a.href = huijiPageUrl(tabxdata?.page)
                     a.target = "_blank"
                     floatBody.appendChild(a)
                     floatBody.appendChild(document.createElement("br"))
                 }else{
-                    let a = document.createElement("ap")
+                    let a = document.createElement("a")
                     a.innerText = text
                     floatBody.appendChild(a)
                     floatBody.appendChild(document.createElement("br"))
@@ -885,52 +825,53 @@ class RoomDrawer{
                 }
                 const ent_id_str = ent.type + "." + ent.variant + "." + ent.subtype
                 let dbItem = this.database.db.get(ent_id_str)
-                const img = dbItem?.image_url
-                let f = dbItem.func
+                if(dbItem == undefined && ent.subtype == 0){
+                    dbItem = this.database.db.get(ent.type + "." + ent.variant)
+                }
 
-                let page = dbItem.page
-                
+                let ent_div:HTMLElement
+
+                let type = ent.type
+                let variant = ent.variant
+                let subtype = ent.subtype
+                let left = (x + (subIndex % rowCount) * subScale ) * this.blockSize + margin
+                let top = (y + Math.floor(subIndex / rowCount) * subScale ) * this.blockSize + margin
+                let size = this.blockSize * subScale
 
                 if(ent.type == 1931 && ent.variant != 0){
-                    f = (t,v,s,size)=>{
-                        let r = document.createElement("span")
-                        r.classList.add("rooms_spike")
-                        r.classList.add("rooms_spike_" + v)
-                        r.style.transform = " translate(-12px,-12px) scale(" + 2 * size / 52 + ") translate(12px,12px)"
-                        return r
-                    }
+                    let r = document.createElement("span")
+                    r.classList.add("rooms_spike")
+                    r.classList.add("rooms_spike_" + variant)
+                    r.style.transform = " translate(-12px,-12px) scale(" + 2 * size / 52 + ") translate(12px,12px)"
+                    ent_div = r
                 }
 
                 if(ent.type == 5 && ent.variant == 100 && ent.subtype != 0){
-                    f = (t,v,s,size)=>{
-                        let r = document.createElement("span")
-                        r.classList.add("icons")
-                        r.classList.add("collectibles")
-                        r.id = "collectibles_" + s
-                        r.style.transform = "scale(" + size / 52 + ")"
+                    let r = document.createElement("span")
+                    r.classList.add("icons")
+                    r.classList.add("collectibles")
+                    r.id = "collectibles_" + subtype
+                    r.style.transform = "scale(" + size / 52 + ")"
 
-                        let a = document.createElement("a")
-                        a.href = huijiPageUrl("c" + s)
-                        a.target = "_blank"
-                        a.appendChild(r)
-                        return a
-                    }
+                    let a = document.createElement("a")
+                    a.href = huijiPageUrl("c" + subtype)
+                    a.target = "_blank"
+                    a.appendChild(r)
+                    ent_div = a
                 }
                 
                 if(ent.type == 5 && ent.variant == 350 && ent.subtype != 0){
-                    f = (t,v,s,size)=>{
-                        let r = document.createElement("span")
-                        r.classList.add("icons")
-                        r.classList.add("trinket")
-                        r.id = "trinket_" + s
-                        r.style.transform = "scale(" + size / 52 + ")"
+                    let r = document.createElement("span")
+                    r.classList.add("icons")
+                    r.classList.add("trinket")
+                    r.id = "trinket_" + subtype
+                    r.style.transform = "scale(" + size / 52 + ")"
 
-                        let a = document.createElement("a")
-                        a.href = huijiPageUrl("t" + s)
-                        a.target = "_blank"
-                        a.appendChild(r)
-                        return a
-                    }
+                    let a = document.createElement("a")
+                    a.href = huijiPageUrl("t" + subtype)
+                    a.target = "_blank"
+                    a.appendChild(r)
+                    return a
                 }
 
                 if(ent.type == 6000){
@@ -951,133 +892,206 @@ class RoomDrawer{
                     }
                     switch(ent.variant){
                         case 0:
-                            x = 0, y=0, f=gen_func;
+                            x = 0, y=0, ent_div = gen_func();
                             break
                         case 1:
-                            x=1,y=0,f=gen_func
+                            x=1,y=0,ent_div = gen_func()
                             break
-                        case 2: x=0,y=1,f=gen_func;break;
-                        case 3:x=1,y=1,f=gen_func;break;
-                        case 4:x=0;y=2;f=gen_func;break;
-                        case 5:x=1;y=2;f=gen_func;break;
-                        case 6:x=2;y=2;f=gen_func;break;
-                        case 7:x=2;y=0;f=gen_func;break;
-                        case 8:x=3;y=0;f=gen_func;break;
-                        case 9:x=2;y=1;f=gen_func;break;
-                        case 10:x=3;y=1;f=gen_func;break;
+                        case 2: x=0,y=1,ent_div = gen_func();break;
+                        case 3:x=1,y=1,ent_div = gen_func();break;
+                        case 4:x=0;y=2;ent_div = gen_func();break;
+                        case 5:x=1;y=2;ent_div = gen_func();break;
+                        case 6:x=2;y=2;ent_div = gen_func();break;
+                        case 7:x=2;y=0;ent_div = gen_func();break;
+                        case 8:x=3;y=0;ent_div = gen_func();break;
+                        case 9:x=2;y=1;ent_div = gen_func();break;
+                        case 10:x=3;y=1;ent_div = gen_func();break;
                     }
                 }
 
                 if(ent.type == 0 && ent.variant == 10){
-                    f = ()=>{
-                        let r = document.createElement("div")
-                        r.style.width = "26px"
-                        r.style.height = "26px"
-                        this.pos(r, 0,0)
-                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
-                        r.style.overflow = "hidden"
-                        r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
-                        return r
-                    }
+                    let r = document.createElement("div")
+                    r.style.width = "26px"
+                    r.style.height = "26px"
+                    this.pos(r, 0,0)
+                    r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
+                    r.style.overflow = "hidden"
+                    r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
+                    ent_div = r
                 }
 
                 if(ent.type == 0 && ent.variant == 20){
-                    f = ()=>{
-                        let r = document.createElement("div")
-                        r.style.width = "26px"
-                        r.style.height = "26px"
-                        this.pos(r, 0,0)
-                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
-                        r.style.backgroundPositionX = 1*-26 + "px"
-                        r.style.backgroundPositionY = 0*-26 + "px"
-                        r.style.overflow = "hidden"
-                        r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
-                        return r
-                    }
+                    let r = document.createElement("div")
+                    r.style.width = "26px"
+                    r.style.height = "26px"
+                    this.pos(r, 0,0)
+                    r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
+                    r.style.backgroundPositionX = 1*-26 + "px"
+                    r.style.backgroundPositionY = 0*-26 + "px"
+                    r.style.overflow = "hidden"
+                    r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
+                    ent_div = r
                 }
                 if(ent.type == 0 && ent.variant == 30){
-                    f = ()=>{
-                        let r = document.createElement("div")
-                        r.style.width = "26px"
-                        r.style.height = "26px"
-                        this.pos(r, 0,0)
-                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
-                        r.style.backgroundPositionX = 1*-26 + "px"
-                        r.style.backgroundPositionY = 1*-26 + "px"
-                        r.style.overflow = "hidden"
-                        r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
-                        return r
-                    }
+                    let r = document.createElement("div")
+                    r.style.width = "26px"
+                    r.style.height = "26px"
+                    this.pos(r, 0,0)
+                    r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
+                    r.style.backgroundPositionX = 1*-26 + "px"
+                    r.style.backgroundPositionY = 1*-26 + "px"
+                    r.style.overflow = "hidden"
+                    r.style.transform = "translate(-13px,-13px) scale(2) translate(13px,13px)"
+                    ent_div = r
                 }
                 if(this.roomJson.type == EnumRoomType.ROOM_DUNGEON && ent.type == 1900 && ent.subtype == 0 && ent.variant == 0){
-                    f = ()=>{
-                        let r = document.createElement("div")
-                        r.style.width = "26px"
-                        r.style.height = "52px"
-                        this.pos(r, 0,0)
-                        r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
-                        r.style.backgroundPositionX = 2*-26 + "px"
-                        r.style.backgroundPositionY = 1*-26 + "px"
-                        r.style.overflow = "hidden"
-                        r.style.transform = "translate(0,-13px) translate(-13px,-13px) scale(2) translate(13px,13px)"
-                        zIndex = 300 - y
-                        return r
-                    }
+                    let r = document.createElement("div")
+                    r.style.width = "26px"
+                    r.style.height = "52px"
+                    this.pos(r, 0,0)
+                    r.style.background = "url(https://huiji-public.huijistatic.com/isaac/uploads/f/f4/Anm2_resources_gfx_grid_tiles_itemdungeon.png)"
+                    r.style.backgroundPositionX = 2*-26 + "px"
+                    r.style.backgroundPositionY = 1*-26 + "px"
+                    r.style.overflow = "hidden"
+                    r.style.transform = "translate(0,-13px) translate(-13px,-13px) scale(2) translate(13px,13px)"
+                    zIndex = 300 - y
+                    ent_div = r
                 }
 
-                if(f == undefined && img){
-                    f = (t,v,s,size)=>{
-                        let ret:HTMLElement = image(img, size, undefined, entity.length == 1 ? this : undefined, dbItem?.rawScale)
-                        // highlight_elems.push(ret)
-                        if(page && !this.no_operate_mode){
-                            let a = document.createElement("a")
-                            a.href = huijiPageUrl(page)
-                            a.target = "_blank"
-                            a.appendChild(ret)
-                            ret = a
+                if(ent_div == undefined){
+                    if(dbItem.entityTabx?.image_url){
+                        let has_sprite_pos = false
+                        let sx,sy,sw,sh
+                        if(dbItem.entityTabx?.sprite_pos != undefined && dbItem.entityTabx?.sprite_pos != null){
+                            let sprite_pos_match = 
+                                new RegExp("^([\\-\\d\\.]+),([\\-\\d\\.]+),([\\-\\d\\.]+),([\\-\\d\\.]+)$")
+                                .exec(dbItem.entityTabx?.sprite_pos)
+                            if(sprite_pos_match){
+                                sx = sprite_pos_match[1]
+                                sy = sprite_pos_match[2]
+                                sw = sprite_pos_match[3]
+                                sh = sprite_pos_match[4]
+                                if(isFinite(sx) && isFinite(sy) && isFinite(sw) && isFinite(sh)){
+                                    has_sprite_pos = true
+                                }
+                            }
                         }
-                        return ret
+
+                        let scale = +dbItem.entityTabx?.image_scale
+                        if(!isFinite(scale))
+                            scale = 1
+
+                        let offsetX = 0
+                        let offsetY = 0
+                        let offsetInput = new RegExp("^([\\-\\d\\.]+),([\\-\\d\\.]+)$").exec(dbItem.entityTabx?.image_offset)
+                        if(offsetInput){
+                            offsetX = +offsetInput[1]
+                            offsetY = +offsetInput[2]
+                            if(!isFinite(offsetX)) offsetX = 0
+                            if(!isFinite(offsetY)) offsetY = 0
+                        }
+
+                        if(has_sprite_pos){
+                            let r = document.createElement("div")
+                            r.style.width = sw + "px"
+                            r.style.height = sh + "px"
+                            this.pos(r, 0,0)
+                            r.style.background = "url(" + huijiImageUrl(dbItem.entityTabx?.image_url) + ")"
+                            r.style.overflow = "hidden"
+                            let scaleW = size / sw
+                            if(!offsetInput){
+                                offsetX = 0
+                                offsetY = 0
+                            }
+
+                            const grid_transform =    `translate(-${sw/2}px, -${sh/2}px) scale(${scaleW}) translate(${size/2/scaleW}px, ${size/2/scaleW}px)`
+                            const preview_transform = `translate(-${sw/2}px, -${sh/2}px) scale(${scale}) translate(${(size/2 + offsetX)/scale}px, ${(size/2 + offsetY)/scale}px)`
+
+                            r.style.transform = this.is_in_preview_mode ? preview_transform : grid_transform
+                            this.entity_preview_mode_datas.push([r, preview_transform])
+                            this.entity_grid_mode_datas.push([r, grid_transform])
+                            setTimeout(()=>{
+                                r.style.transition = "all 0.2s"
+                            },1000)
+
+                            ent_div = r
+                        }else{
+                            // draw image
+                            let ret = new Image()
+                            ret.style.imageRendering = "pixelated"
+                            ret.onload = ()=>{
+                                let scaleW = size / ret.width
+                                if(scaleW > 2)
+                                    scaleW = 2 // 不要放大太大
+
+                                if(!offsetInput){
+                                    offsetX = 0
+                                    offsetY = 0
+                                }
+
+                                const grid_transform = `translate(-${ret.width/2}px, -${ret.height/2}px) scale(${scaleW}) translate(${size/2/scaleW}px, ${size/2/scaleW}px)`
+                                const preview_transform = `translate(-${ret.width/2}px, -${ret.height/2}px) scale(${scale}) translate(${(size/2 + offsetX)/scale}px, ${(size/2 + offsetY)/scale}px)`
+                                
+                                // "translate(-" + ret.width/2 + "px, -" + ret.height/2 + "px)" + "scale(" + rawScale + ") translate(" + sizeW/4 + "px, " + (-ret.height/2 + sizeW/2) + "px)"
+                                if(entity.length == 1){
+                                    ret.style.transform = this.is_in_preview_mode ? preview_transform : grid_transform
+                                    this.entity_preview_mode_datas.push([ret, preview_transform])
+                                    this.entity_grid_mode_datas.push([ret, grid_transform])
+                                    setTimeout(()=>{
+                                        ret.style.transition = "all 0.2s"
+                                    },1000)
+                                }else{
+                                    ret.style.transform = grid_transform
+                                }                
+                                ret.onload = undefined
+                            }
+                            ret.src = huijiImageUrl(dbItem.entityTabx?.image_url)
+
+                            let ret_div:HTMLElement = ret
+                            // highlight_elems.push(ret)
+                            if(dbItem.entityTabx?.page && !this.no_operate_mode){
+                                let a = document.createElement("a")
+                                a.href = huijiPageUrl(dbItem.entityTabx?.page)
+                                a.target = "_blank"
+                                a.appendChild(ret_div)
+                                ret_div = a
+                            }
+
+                            let zIndexInput = +dbItem.entityTabx?.zindex
+                            if(isFinite(zIndexInput) && zIndexInput != 0)
+                                zIndex = zIndexInput
+                            ent_div = ret_div
+                        }
                     }
                 }
 
-                
-                if(f == undefined){
-                    f = (t,s,v,size)=>{
-                        let div = document.createElement("div")
-                        let span1 = document.createElement("span")
-                        let span2 = document.createElement("span")
-                        span1.innerText = "实体 " +ent.type + "."
-                        span1.style.display = "inline-block"
-                        span2.innerText =   ent.variant + "." + ent.subtype
-                        div.appendChild(span1)
-                        div.appendChild(span2)
-                        div.style.fontFamily = "LCDPHONE"
-                        div.style.fontSize = "14px"
-                        div.style.border = "solid black 1px"
-                        div.style.width = this.blockSize + "px"
-                        div.style.height = this.blockSize + "px"
-                        div.style.transform = "scale(" + size / 52 + ")"
-                        div.style.color = "white"
-            
-                        return div
-                        root.appendChild(div)
-                        this.pos(div, x*this.blockSize, y*this.blockSize)
-                    }
-                    // f = (t,v,s, size)=>{
-                    //     let div = document.createElement("div")
-                    //     div.innerText = "NF_" + t+"."+v+"."+s
-                    //     div.style.transform = "scale(" + size / 52 + ")"
-                    //     return div
-                    // }
+    
+                if(ent_div == undefined){
+                    let div = document.createElement("div")
+                    let span1 = document.createElement("span")
+                    let span2 = document.createElement("span")
+                    span1.innerText = "实体 " +ent.type + "."
+                    span1.style.display = "inline-block"
+                    span2.innerText =   ent.variant + "." + ent.subtype
+                    div.appendChild(span1)
+                    div.appendChild(span2)
+                    div.style.fontFamily = "LCDPHONE"
+                    div.style.fontSize = "10px"
+                    div.style.border = "solid black 1px"
+                    div.style.width = this.blockSize + "px"
+                    div.style.height = this.blockSize + "px"
+                    div.style.transform = "scale(" + size / 52 + ")"
+                    div.style.color = "white"
+        
+                    ent_div = div
+                    // root.appendChild(div)
+                    // this.pos(div, x*this.blockSize, y*this.blockSize)
                 }
 
-                let left = (x + (subIndex % rowCount) * subScale ) * this.blockSize + margin
-                let top = (y + Math.floor(subIndex / rowCount) * subScale ) * this.blockSize + margin
-                let div = f(ent.type,ent.variant,ent.subtype, this.blockSize * subScale) as HTMLElement
                 let divParent = document.createElement("div")
                 root.appendChild(divParent)
                 this.pos(divParent, left, top)
-                divParent.appendChild(div)
+                divParent.appendChild(ent_div)
                 divParent.style.zIndex = zIndex.toString()
                 subIndex += 1
             }
