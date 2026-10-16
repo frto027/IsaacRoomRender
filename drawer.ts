@@ -138,8 +138,8 @@ class EntityImageDatabase{
     }
 
     sendUrlObtainRequest(done:()=>void){
-        var filter:any = { "$or": [] }
-        
+        var ent_ids = new Set<string>()
+
         var requesting_items:EntityDatabaseItem[] = []
         //由于数据库接口不能接受过长数据（可能是get请求的url限制），我们对?.0.0以及a.?.c的数据进行合并同类项，以构造更短的请求
         var x_0_0_items = []
@@ -149,21 +149,21 @@ class EntityImageDatabase{
                 return
             if(v.entityTabx == undefined){
                 if(k.endsWith(".0")){
-                    filter["$or"].push({
-                        ent_id: k.substring(0,k.length-2)
-                    })
+                    ent_ids.add(k.substring(0,k.length-2))
                 }
-                filter["$or"].push({
-                    ent_id: k
-                })
+                ent_ids.add(k)
                 requesting_items.push(v)
             }
         });
-        
-        if(filter["$or"].length == 0){
+        if(ent_ids.size == 0){
             done()
             return
         }
+        let filter = {
+            ent_id : {
+                "$in": Array.from(ent_ids)
+            }
+        };
 
         (window as any).$.ajax({
             url: "/api/rest_v1/namespace/data",
