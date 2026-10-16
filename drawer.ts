@@ -142,15 +142,10 @@ class EntityImageDatabase{
 
         var requesting_items:EntityDatabaseItem[] = []
         //由于数据库接口不能接受过长数据（可能是get请求的url限制），我们对?.0.0以及a.?.c的数据进行合并同类项，以构造更短的请求
-        var x_0_0_items = []
-        var a_x_c_items = new Map<string, number[]>()
         this.db.forEach((v,k,m)=>{
             if(v.already_requested)
                 return
             if(v.entityTabx == undefined){
-                if(k.endsWith(".0")){
-                    ent_ids.add(k.substring(0,k.length-2))
-                }
                 ent_ids.add(k)
                 requesting_items.push(v)
             }
@@ -825,9 +820,9 @@ class RoomDrawer{
                 }
                 const ent_id_str = ent.type + "." + ent.variant + "." + ent.subtype
                 let dbItem = this.database.db.get(ent_id_str)
-                if(dbItem == undefined && ent.subtype == 0){
-                    dbItem = this.database.db.get(ent.type + "." + ent.variant)
-                }
+                // if(dbItem == undefined && ent.subtype == 0){
+                //     dbItem = this.database.db.get(ent.type + "." + ent.variant)
+                // }
 
                 let ent_div:HTMLElement
 
