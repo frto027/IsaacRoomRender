@@ -83,7 +83,43 @@ class HuijiJsonDatabase{
             return
         }
 
-        (window as any).$.ajax({
+        {
+            // 请求长度优化：抽取in数组的公共前缀，组成正则表达式
+            let try_common_prefix : string = filter["_id"]["$in"][0]
+            let try_prefix_index = try_common_prefix.lastIndexOf("/")
+            if(try_prefix_index > 0){
+                try_common_prefix = try_common_prefix.substring(0,try_prefix_index+1);
+
+                let fine_for_common_prefix = true;
+                for(let elem of filter["_id"]["$in"]){
+                    if(elem.startsWith(try_common_prefix) && elem.endsWith(".json")){
+                        //fine
+                    }else{
+                        fine_for_common_prefix = false;
+                        break
+                    }
+                }
+                let escapeRegExp = (str:string) => {
+                    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+                }
+
+                if(fine_for_common_prefix){
+                    let exps = []
+                    for(let elem of filter["_id"]["$in"]){
+                        exps.push(escapeRegExp(elem.substring(try_common_prefix.length, elem.length - ".json".length)))
+                    }
+
+                    let common_regexp = escapeRegExp(try_common_prefix) + "(" + exps.join("|") + ")\\.json"
+                    filter["_id"] = {
+                        "$regex": "^" + common_regexp + "$"
+                    }
+                }
+
+            }
+        }
+
+
+        ;(window as any).$.ajax({
             url: "/api/rest_v1/namespace/data",
             method: "GET",
             data: { filter: JSON.stringify(
